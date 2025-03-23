@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Musafir Multi-Leg Prayer Eligibility Checker</title>
   <!-- Leaflet CSS for Map Display -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
   <style>
     /* ===== Global Styles ===== */
     body {
@@ -303,11 +303,12 @@
     </div>
   </div>
   
-  <!-- Leaflet JS Library from cdnjs (with defer) -->
-  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/leaflet.js"></script>
-  <!-- Custom JavaScript (with defer) -->
-  <script defer>
+  <!-- Leaflet JS Library -->
+  <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+  <script>
     (function() {
+      // All code is wrapped in an IIFE to avoid duplicate global declarations.
+      
       // Debounce function.
       function debounce(func, wait) {
         let timeout;
@@ -513,6 +514,7 @@
         let jamaaDecision = "";
         let jamaaDecisionArabic = "";
         
+        // Determine matching prayer and jamaa decision based on the selected prayer.
         if (selectedPrayer === "Zuhr") {
           matchingPrayer = "Asr";
           jamaaDecision = "Jamaa Takhir (delaying)";
@@ -531,7 +533,9 @@
           jamaaDecisionArabic = "جَمَاعَةُ تَقْدِيمٍ";
         }
         
+        // Build the Arabic niat text with shukkles.
         const niatArabic = `نَوَيْتُ أَنْ أُصَلِّيَ صَلَاةَ ${arabicNames[selectedPrayer]} بِقَصْرٍ، وَ${jamaaDecisionArabic} صَلَاةَ ${arabicNames[matchingPrayer]}.`;
+        // English explanation.
         const niatEnglish = `I intend to pray ${selectedPrayer} with Qasr (shortened prayer) and ${jamaaDecision} the ${matchingPrayer} prayer.`;
         
         document.getElementById('niatResult').innerHTML = `<div style="text-align:center; margin-bottom:10px;">${niatArabic}</div><div style="font-size:0.8em; text-align:center; color:#555;">${niatEnglish}</div>`;
@@ -560,6 +564,7 @@
           const elig = determineEligibility(leg.distance, leg.stayDuration);
           
           if (leg.leg === "Return Home") {
+            // For the Return Home leg, display a message with the destination country and general travel rules.
             narrative = `<p>Since you are travelling back to <strong>${destCountry}</strong>, the following rules apply during your travel phase:</p>
             <ul>
               <li><strong>Hanafi:</strong> Qasr is permitted (shortened prayer: 2 rak‘ahs) during travel up to 15 days; combining is not permitted.</li>
@@ -573,21 +578,25 @@
             narrative = `<p>You have traveled <strong>${leg.distance.toFixed(2)} km</strong> from <strong>${fromCountry}</strong> to <strong>${destCountry}</strong>, meeting the minimum requirement for travel concessions.</p>`;
             narrative += `<p>Based on your stay of <strong>${leg.stayDuration} day(s)</strong> at ${destCountry}, the following guidelines apply during your travel phase:</p>`;
             narrative += `<ul>`;
+            // Hanafi narrative
             if (leg.stayDuration < 15) {
               narrative += `<li><strong>Hanafi:</strong> Qualifies for <strong>Qasr</strong> (2 rak‘ahs instead of 4). Combining is not permitted.</li>`;
             } else {
               narrative += `<li><strong>Hanafi:</strong> Exceeds the 15-day limit; full (resident) prayer is required.</li>`;
             }
+            // Maliki narrative
             if (leg.stayDuration < 4) {
               narrative += `<li><strong>Maliki:</strong> Qualifies for <strong>Qasr</strong> as the stay is under 4 days; combining is not permitted.</li>`;
             } else {
               narrative += `<li><strong>Maliki:</strong> Exceeds the 4-day limit; full prayer obligations apply.</li>`;
             }
+            // Shafi‘i narrative
             if (leg.stayDuration < 4) {
               narrative += `<li><strong>Shafi‘i:</strong> Qualifies for <strong>Qasr</strong> and allows combining. You may choose either <strong>Jamaa Takhir</strong> (delaying) or <strong>Jamaa Takdim</strong> (advancing).</li>`;
             } else {
               narrative += `<li><strong>Shafi‘i:</strong> Exceeds the 4-day limit; full (resident) prayer is required.</li>`;
             }
+            // Hanbali narrative
             if (leg.stayDuration < 4) {
               narrative += `<li><strong>Hanbali:</strong> Qualifies for <strong>Qasr</strong> and allows combining. The preferred method is <strong>Jamaa Takdim</strong> (advancing), though <strong>Jamaa Takhir</strong> (delaying) is also acceptable.</li>`;
             } else {
@@ -604,6 +613,7 @@
           </tr>`;
         });
       
+        // If user opted to return home, add a separate row.
         if (isReturningHome) {
           legsResultsHTML += `<tr>
             <td colspan="5" style="text-align:center;">
@@ -618,6 +628,7 @@
       
       document.getElementById('calculateBtn').addEventListener('click', async function() {
         const calculateBtn = document.getElementById('calculateBtn');
+        // Hide the map, results, and niat section initially
         document.getElementById('map').style.display = "none";
         document.getElementById('resultsSection').style.display = "none";
         document.getElementById('niatSection').style.display = "none";
@@ -706,14 +717,17 @@
             journeyCoords.push(startingCoords);
           }
       
+          // Show the map container first so Leaflet can calculate its dimensions correctly
           document.getElementById('map').style.display = "block";
           map.invalidateSize();
       
+          // Add polyline and adjust map view
           polyline = L.polyline(journeyCoords, {color: 'black', dashArray: '4, 8'}).addTo(map);
           map.fitBounds(polyline.getBounds(), {padding: [50, 50]});
       
           await generateResults(legsData, isReturningHome, startingCountryLocal);
           document.getElementById('resultsSection').style.display = "block";
+          // Now show the niat section once eligibility calculation is complete.
           document.getElementById('niatSection').style.display = "block";
         } catch (error) {
           console.error("Error during processing:", error);
@@ -741,8 +755,6 @@
       
       // Map initialization.
       function initMap() {
-        // Now that we are using window.onload,
-        // this function should only be called once L is defined.
         map = L.map('map').setView([20, 0], 2);
         L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
           maxZoom: 19,
@@ -756,10 +768,16 @@
         document.getElementById('modal').style.display = "none";
       });
       
-      // Populate Madhhab Summary Cards.
+      // Global error listener.
+      window.addEventListener('error', function(e) {
+        console.error("Global error:", e.error);
+      });
+      
+      // Populate Madhhab Summary Cards with improved formatting.
       function populateMadhhabCards() {
         const cardsContainer = document.getElementById('madhhabCards');
-        cardsContainer.innerHTML = "";
+        cardsContainer.innerHTML = ""; // Clear any existing cards
+
         const madhhabs = [
           {
             name: "Hanafi",
@@ -800,6 +818,7 @@
                         </ul>`
           }
         ];
+
         madhhabs.forEach(madhhab => {
           const card = document.createElement('div');
           card.className = "madhhab-card";
@@ -813,8 +832,8 @@
         });
       }
       
-      // Initialize when window is fully loaded.
-      window.onload = function() {
+      // Initialize map, travel legs table, and populate Madhhab cards on DOMContentLoaded.
+      document.addEventListener("DOMContentLoaded", function() {
         initMap();
         (function initLegsTable() {
           const tbody = document.getElementById('legsTbody');
@@ -827,7 +846,7 @@
           tbody.appendChild(placeholder);
         })();
         populateMadhhabCards();
-      };
+      });
     })();
   </script>
 </body>
