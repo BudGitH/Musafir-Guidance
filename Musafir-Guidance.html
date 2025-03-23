@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Musafir Multi-Leg Prayer Eligibility Checker</title>
+  <!-- Leaflet CSS for Map Display -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+  <style>
+    /* ===== Global Styles ===== */
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+      margin: 0;
+      padding: 20px;
+    }
+    .container {
+      max-width: 1000px;
+      margin: auto;
+      background: #fff;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    h1, h2, h3 {
+      text-align: center;
+    }
+    p {
+      line-height: 1.6;
+    }
+    label {
+      font-weight: bold;
+      display: block;
+      margin-top: 10px;
+    }
+    input[type="text"], input[type="number"] {
+      padding: 8px;
+      margin-top: 5px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    button {
+      padding: 10px 15px;
+      border: none;
+      border-radius: 5px;
+      font-size: 16px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+    /* ===== Calculate Button ===== */
+    #calculateBtn {
+      background: #90ee90;
+      display: block;
+      margin: 20px auto;
+      position: relative;
+    }
+    #calculateBtn:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    /* ===== Legs Table ===== */
+    #legsTable {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      table-layout: fixed;
+    }
+    #legsTable th, #legsTable td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: center;
+      word-wrap: break-word;
+    }
+    #legsTable th {
+      background: #f2f2f2;
+    }
+    #legsTable tr:hover {
+      background: #e0f7fa;
+    }
+    .placeholder-row {
+      background: #e9ecef;
+      cursor: pointer;
+      font-style: italic;
+    }
+    .remove-btn {
+      background: #dc3545;
+      color: #fff;
+      border: none;
+      border-radius: 3px;
+      padding: 5px 10px;
+      cursor: pointer;
+    }
+    /* Destination cell container */
+    .dest-container {
+      text-align: left;
+    }
+    .full-address {
+      color: #555;
+      font-size: 0.9em;
+      margin-top: 4px;
+    }
+    /* ===== Map Container ===== */
+    #map {
+      height: 300px;
+      margin-top: 20px;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      display: none;
+    }
+    /* ===== Results Section ===== */
+    .results-section {
+      margin-top: 30px;
+      display: none;
+    }
+    .leg-result-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+    }
+    .leg-result-table th, .leg-result-table td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: left;
+    }
+    .leg-result-table th {
+      background: #e9ecef;
+    }
+    /* Mini Madhhab Cards Container */
+    .madhhab-mini-cards {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    /* Mini Madhhab Card Styles */
+    .madhhab-card {
+      flex: 1 1 calc(25% - 10px);
+      box-sizing: border-box;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      padding: 10px;
+      transition: transform 0.2s, background 0.2s;
+      cursor: pointer;
+      background: #ffe5b4;
+      text-align: left;
+    }
+    .madhhab-card:hover {
+      transform: scale(1.03);
+      background: #ffcc80;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+    .madhhab-header {
+      font-weight: bold;
+      font-size: 1.1em;
+      margin-bottom: 5px;
+    }
+    /* ===== Niat Section ===== */
+    .niat-section {
+      border: 1px solid #ddd;
+      padding: 10px;
+      margin: 20px 0;
+      border-radius: 5px;
+      background: #f9f9f9;
+    }
+    /* Hide the niat section initially */
+    #niatSection {
+      display: none;
+    }
+    /* ===== Modal Styles ===== */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      overflow: auto;
+      background: rgba(0,0,0,0.5);
+    }
+    .modal-content {
+      background: #fff;
+      margin: 10% auto;
+      padding: 20px;
+      width: 80%;
+      max-width: 700px;
+      border-radius: 10px;
+      position: relative;
+    }
+    .close-modal {
+      color: #aaa;
+      float: right;
+      font-size: 28px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .close-modal:hover {
+      color: #000;
+    }
+    .reference {
+      font-size: 0.9em;
+      color: #555;
+      margin-top: 10px;
+    }
+    /* ===== Loading Modal Styles ===== */
+    .loading-modal-content {
+      text-align: center;
+    }
+    .loading-animation {
+      font-size: 48px;
+      margin-top: 20px;
+      animation: cycleIcon 1s infinite;
+    }
+    @keyframes cycleIcon {
+      0% { content: '✈'; }
+      50% { content: '🚗'; }
+      100% { content: '✈'; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Musafir Multi-Leg Prayer Eligibility Checker</h1>
+    <p>
+      Enter your journey details below. Start with your home location and add travel legs – each leg includes a destination, travel duration, and stay duration.
+      If you plan to return home at the end, check the option below. For each leg, a contextual narrative is provided to help you understand your travel status and what actions to take.
+    </p>
+    
+    <!-- Starting Location with Autocomplete -->
+    <label for="startingLocation">Starting Location:</label>
+    <input type="text" id="startingLocation" list="locationSuggestions" placeholder="e.g. Singapore" required>
+    <datalist id="locationSuggestions"></datalist>
+    
+    <!-- Global Return Home Option -->
+    <label>
+      <input type="checkbox" id="returnHome"> I plan to return to my starting location at the end of the journey.
+    </label>
+    
+    <!-- Travel Legs Table -->
+    <table id="legsTable">
+      <thead>
+        <tr>
+          <th>From Country</th>
+          <th>Destination Country</th>
+          <th>Travel Duration (days)</th>
+          <th>Stay Duration (days)</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="legsTbody">
+        <tr class="placeholder-row">
+          <td colspan="5">Click here to add a travel leg</td>
+        </tr>
+      </tbody>
+    </table>
+    
+    <!-- Calculate Eligibility Button -->
+    <button type="button" id="calculateBtn">Calculate Eligibility</button>
+    
+    <!-- Map Container -->
+    <div id="map"></div>
+    
+    <!-- Niat Section (hidden until after eligibility calculation) -->
+    <div id="niatSection" class="niat-section">
+      <h2>Niat (Intention) for Prayer</h2>
+      <label for="prayerSelect">Select your first prayer:</label>
+      <select id="prayerSelect">
+        <option value="Zuhr">Zuhr (ٱلظُّهْرِ)</option>
+        <option value="Asr">Asr (ٱلْعَصْرِ)</option>
+        <option value="Maghrib">Maghrib (ٱلْمَغْرِبِ)</option>
+        <option value="Isha">Isha (ٱلْعِشَاء)</option>
+      </select>
+      <button type="button" id="generateNiatBtn">Generate Niat</button>
+      <div id="niatResult" style="font-size: 1.5em; margin-top: 10px;"></div>
+    </div>
+    
+    <!-- Results Section (initially hidden) -->
+    <div id="resultsSection" class="results-section">
+      <h2>Journey Leg Eligibility Overview</h2>
+      <div id="legsResults"></div>
+      
+      <h2>Madhhab Summary (Basic Guideline)</h2>
+      <div class="madhhab-mini-cards" id="madhhabCards"></div>
+    </div>
+  </div>
+  
+  <!-- Loading Modal for Calculation -->
+  <div id="loadingModal" class="modal">
+    <div class="modal-content loading-modal-content">
+      <h2>Checking your route...</h2>
+      <div class="loading-animation" id="animIcon"></div>
+    </div>
+  </div>
+  
+  <!-- Modal for Detailed Madhhab Explanation -->
+  <div id="modal" class="modal">
+    <div class="modal-content">
+      <span class="close-modal">&times;</span>
+      <div id="modalBody"></div>
+    </div>
+  </div>
+  
+  <!-- Leaflet JS Library -->
+  <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+  <script>
+    (function() {
+      // All code is wrapped in an IIFE to avoid duplicate global declarations.
+      
+      // Debounce function.
+      function debounce(func, wait) {
+        let timeout;
+        return function(...args) {
+          clearTimeout(timeout);
+          timeout = setTimeout(() => func.apply(this, args), wait);
+        };
+      }
+      
+      // Helper: Extract country from a display_name (assumes last comma-separated value).
+      function extractCountry(displayName) {
+        const parts = displayName.split(",");
+        return parts[parts.length - 1].trim();
+      }
+      
+      // Minimal geocode function using Nominatim API.
+      async function geocodeAddress(address) {
+        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`;
+        const response = await fetch(url);
+        const data = await response.json();
+        if (data && data.length > 0) {
+          return {
+            lat: parseFloat(data[0].lat),
+            lon: parseFloat(data[0].lon),
+            display_name: data[0].display_name
+          };
+        }
+        throw new Error("Address not found");
+      }
+      
+      // Haversine formula for distance calculation.
+      function calculateDistance(coord1, coord2) {
+        const R = 6371;
+        const lat1 = coord1.lat * Math.PI / 180;
+        const lat2 = coord2.lat * Math.PI / 180;
+        const deltaLat = (coord2.lat - coord1.lat) * Math.PI / 180;
+        const deltaLon = (coord2.lon - coord1.lon) * Math.PI / 180;
+        const a = Math.sin(deltaLat/2) ** 2 +
+                  Math.cos(lat1) * Math.cos(lat2) *
+                  Math.sin(deltaLon/2) ** 2;
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c;
+      }
+      
+      // Determine eligibility based on distance and intended stay.
+      function determineEligibility(distance, stayDuration) {
+        const minDistance = 80;
+        const qualifiesDistance = distance >= minDistance;
+        return {
+          qualifiesDistance,
+          hanafi: stayDuration < 15,
+          maliki: stayDuration < 4,
+          shafii: stayDuration < 4,
+          hanbali: stayDuration < 4
+        };
+      }
+      
+      let startingCountry = "Unknown";
+      let legCount = 0;
+      let map, markers = [], polyline;
+      const markerColors = ["red", "blue", "green", "orange", "purple", "yellow"];
+      
+      // Mapping for Arabic prayer names.
+      const arabicNames = {
+        "Zuhr": "ٱلظُّهْرِ",
+        "Asr": "ٱلْعَصْرِ",
+        "Maghrib": "ٱلْمَغْرِبِ",
+        "Isha": "ٱلْعِشَاء"
+      };
+      
+      // Update starting location's country on blur.
+      document.getElementById('startingLocation').addEventListener('blur', async function(e) {
+        if(e.target.value.trim() !== "") {
+          try {
+            let data = await geocodeAddress(e.target.value);
+            startingCountry = extractCountry(data.display_name);
+            const firstLeg = document.querySelector('#legsTbody tr:not(.placeholder-row)');
+            if(firstLeg) {
+              firstLeg.cells[0].innerText = startingCountry;
+            }
+          } catch(err) {
+            console.error("Error updating starting country:", err);
+          }
+        }
+      });
+      
+      // Function to add a new travel leg row.
+      function addLegRow() {
+        const tbody = document.getElementById('legsTbody');
+        const placeholder = document.querySelector('.placeholder-row');
+        if(placeholder) placeholder.remove();
+        const row = document.createElement('tr');
+        const currentIndex = document.querySelectorAll('#legsTbody tr').length + 1;
+        row.setAttribute('data-index', currentIndex);
+        row.innerHTML = `
+          <td id="fromCountry-${currentIndex}">--</td>
+          <td>
+            <div class="dest-container">
+              <input type="text" class="destination-input" list="locationSuggestions" placeholder="Enter destination" required>
+              <div class="full-address"></div>
+            </div>
+          </td>
+          <td><input type="number" class="travel-duration-input" min="1" placeholder="Days" required></td>
+          <td><input type="number" class="stay-duration-input" min="0" placeholder="Days" required></td>
+          <td><button type="button" class="remove-btn">Remove</button></td>
+        `;
+        tbody.appendChild(row);
+        const newPlaceholder = document.createElement('tr');
+        newPlaceholder.className = 'placeholder-row';
+        newPlaceholder.innerHTML = `<td colspan="5">Click here to add a travel leg</td>`;
+        newPlaceholder.addEventListener('click', addLegRow);
+        tbody.appendChild(newPlaceholder);
+        updateFromCountries();
+      }
+      
+      // Add event listener to the initial placeholder row.
+      document.querySelector('.placeholder-row').addEventListener('click', addLegRow);
+      
+      // Event delegation for remove buttons.
+      document.getElementById('legsTable').addEventListener('click', function(e) {
+        if(e.target && e.target.classList.contains('remove-btn')) {
+          e.target.closest('tr').remove();
+          updateFromCountries();
+        }
+      });
+      
+      // Function to update the "From Country" column for all rows.
+      function updateFromCountries() {
+        const rows = document.querySelectorAll('#legsTbody tr:not(.placeholder-row)');
+        if(rows.length === 0) return;
+        rows[0].cells[0].innerText = startingCountry;
+        for(let i = 1; i < rows.length; i++) {
+          const prevRow = rows[i - 1];
+          const fullAddressDiv = prevRow.querySelector('.full-address');
+          if(fullAddressDiv && fullAddressDiv.innerText.trim() !== "") {
+            rows[i].cells[0].innerText = extractCountry(fullAddressDiv.innerText);
+          }
+        }
+      }
+      
+      // Debounced function to update destination full address on blur.
+      const debouncedUpdateDestination = debounce(async function(input) {
+        if (input.value.trim() !== "") {
+          try {
+            let data = await geocodeAddress(input.value);
+            let row = input.closest('tr');
+            if(!row) return;
+            const fullAddressDiv = row.querySelector('.full-address');
+            if(fullAddressDiv) {
+              fullAddressDiv.innerText = data.display_name;
+            }
+            updateFromCountries();
+          } catch(err) {
+            console.error("Error updating destination country:", err);
+          }
+        }
+      }, 150);
+      
+      // Listen for blur events on destination inputs.
+      document.getElementById('legsTbody').addEventListener('blur', function(e) {
+        if(e.target && e.target.classList.contains('destination-input')) {
+          debouncedUpdateDestination(e.target);
+        }
+      }, true);
+      
+      // Autocomplete suggestions using Nominatim API.
+      async function updateSuggestions(input) {
+        const query = input.value;
+        if (!query || query.length < 3) return;
+        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`;
+        try {
+          const response = await fetch(url);
+          const data = await response.json();
+          const datalist = document.getElementById('locationSuggestions');
+          datalist.innerHTML = "";
+          data.forEach(item => {
+            const option = document.createElement('option');
+            option.value = item.display_name;
+            datalist.appendChild(option);
+          });
+        } catch (error) {
+          console.error("Autocomplete error:", error);
+        }
+      }
+      
+      const debouncedUpdateSuggestions = debounce(updateSuggestions, 150);
+      
+      document.getElementById('startingLocation').addEventListener('input', function() {
+        debouncedUpdateSuggestions(this);
+      });
+      document.getElementById('legsTbody').addEventListener('input', function(e) {
+        if(e.target && e.target.classList.contains('destination-input')) {
+          debouncedUpdateSuggestions(e.target);
+        }
+      });
+      
+      // ---------------------------
+      // Generate Niat Functionality
+      // ---------------------------
+      document.getElementById('generateNiatBtn').addEventListener('click', function() {
+        const selectedPrayer = document.getElementById('prayerSelect').value;
+        let matchingPrayer = "";
+        let jamaaDecision = "";
+        let jamaaDecisionArabic = "";
+        
+        // Determine matching prayer and jamaa decision based on the selected prayer.
+        if (selectedPrayer === "Zuhr") {
+          matchingPrayer = "Asr";
+          jamaaDecision = "Jamaa Takhir (delaying)";
+          jamaaDecisionArabic = "جَمَاعَةُ تَأْخِيرٍ";
+        } else if (selectedPrayer === "Asr") {
+          matchingPrayer = "Zuhr";
+          jamaaDecision = "Jamaa Takdim (advancing)";
+          jamaaDecisionArabic = "جَمَاعَةُ تَقْدِيمٍ";
+        } else if (selectedPrayer === "Maghrib") {
+          matchingPrayer = "Isha";
+          jamaaDecision = "Jamaa Takhir (delaying)";
+          jamaaDecisionArabic = "جَمَاعَةُ تَأْخِيرٍ";
+        } else if (selectedPrayer === "Isha") {
+          matchingPrayer = "Maghrib";
+          jamaaDecision = "Jamaa Takdim (advancing)";
+          jamaaDecisionArabic = "جَمَاعَةُ تَقْدِيمٍ";
+        }
+        
+        // Build the Arabic niat text with shukkles.
+        const niatArabic = `نَوَيْتُ أَنْ أُصَلِّيَ صَلَاةَ ${arabicNames[selectedPrayer]} بِقَصْرٍ، وَ${jamaaDecisionArabic} صَلَاةَ ${arabicNames[matchingPrayer]}.`;
+        // English explanation.
+        const niatEnglish = `I intend to pray ${selectedPrayer} with Qasr (shortened prayer) and ${jamaaDecision} the ${matchingPrayer} prayer.`;
+        
+        document.getElementById('niatResult').innerHTML = `<div style="text-align:center; margin-bottom:10px;">${niatArabic}</div><div style="font-size:0.8em; text-align:center; color:#555;">${niatEnglish}</div>`;
+      });
+      
+      // ---------------------------
+      // Generate Leg Narrative Functionality
+      // ---------------------------
+      async function generateResults(legsData, isReturningHome, startingCountryParam) {
+        let legsResultsHTML = `<table class="leg-result-table">
+          <thead>
+            <tr>
+              <th>From Country</th>
+              <th>Destination Country</th>
+              <th>Travel Duration (days)</th>
+              <th>Stay Duration (days)</th>
+              <th>Narrative</th>
+            </tr>
+          </thead>
+          <tbody>`;
+      
+        legsData.forEach((leg, i) => {
+          let fromCountry = i === 0 ? startingCountryParam : extractCountry(legsData[i-1].destination.display_name);
+          let destCountry = leg.destination.display_name ? extractCountry(leg.destination.display_name) : "Unknown";
+          let narrative = "";
+          const elig = determineEligibility(leg.distance, leg.stayDuration);
+          
+          if (leg.leg === "Return Home") {
+            // For the Return Home leg, display a message with the destination country and general travel rules.
+            narrative = `<p>Since you are travelling back to <strong>${destCountry}</strong>, the following rules apply during your travel phase:</p>
+            <ul>
+              <li><strong>Hanafi:</strong> Qasr is permitted (shortened prayer: 2 rak‘ahs) during travel up to 15 days; combining is not permitted.</li>
+              <li><strong>Maliki:</strong> Qasr is permitted if the stay is under 4 days; combining is not permitted.</li>
+              <li><strong>Shafi‘i:</strong> Qasr is permitted if the stay is under 4 days; combining is permitted (using either Jamaa Takhir or Jamaa Takdim).</li>
+              <li><strong>Hanbali:</strong> Qasr is permitted if the stay is under 4 days; combining is permitted (with Jamaa Takdim generally preferred, though Jamaa Takhir is acceptable).</li>
+            </ul>`;
+          } else if (!elig.qualifiesDistance) {
+            narrative = `<em>This leg does not qualify for travel concessions because the distance is less than 80 km. Please pray as a resident.</em>`;
+          } else {
+            narrative = `<p>You have traveled <strong>${leg.distance.toFixed(2)} km</strong> from <strong>${fromCountry}</strong> to <strong>${destCountry}</strong>, meeting the minimum requirement for travel concessions.</p>`;
+            narrative += `<p>Based on your stay of <strong>${leg.stayDuration} day(s)</strong> at ${destCountry}, the following guidelines apply during your travel phase:</p>`;
+            narrative += `<ul>`;
+            // Hanafi narrative
+            if (leg.stayDuration < 15) {
+              narrative += `<li><strong>Hanafi:</strong> Qualifies for <strong>Qasr</strong> (2 rak‘ahs instead of 4). Combining is not permitted.</li>`;
+            } else {
+              narrative += `<li><strong>Hanafi:</strong> Exceeds the 15-day limit; full (resident) prayer is required.</li>`;
+            }
+            // Maliki narrative
+            if (leg.stayDuration < 4) {
+              narrative += `<li><strong>Maliki:</strong> Qualifies for <strong>Qasr</strong> as the stay is under 4 days; combining is not permitted.</li>`;
+            } else {
+              narrative += `<li><strong>Maliki:</strong> Exceeds the 4-day limit; full prayer obligations apply.</li>`;
+            }
+            // Shafi‘i narrative
+            if (leg.stayDuration < 4) {
+              narrative += `<li><strong>Shafi‘i:</strong> Qualifies for <strong>Qasr</strong> and allows combining. You may choose either <strong>Jamaa Takhir</strong> (delaying) or <strong>Jamaa Takdim</strong> (advancing).</li>`;
+            } else {
+              narrative += `<li><strong>Shafi‘i:</strong> Exceeds the 4-day limit; full (resident) prayer is required.</li>`;
+            }
+            // Hanbali narrative
+            if (leg.stayDuration < 4) {
+              narrative += `<li><strong>Hanbali:</strong> Qualifies for <strong>Qasr</strong> and allows combining. The preferred method is <strong>Jamaa Takdim</strong> (advancing), though <strong>Jamaa Takhir</strong> (delaying) is also acceptable.</li>`;
+            } else {
+              narrative += `<li><strong>Hanbali:</strong> Exceeds the 4-day limit; full prayer is required.</li>`;
+            }
+            narrative += `</ul>`;
+          }
+          legsResultsHTML += `<tr>
+            <td>${fromCountry}</td>
+            <td>${destCountry}</td>
+            <td>${leg.travelDuration}</td>
+            <td>${leg.stayDuration}</td>
+            <td>${narrative}</td>
+          </tr>`;
+        });
+      
+        // If user opted to return home, add a separate row.
+        if (isReturningHome) {
+          legsResultsHTML += `<tr>
+            <td colspan="5" style="text-align:center;">
+              Upon returning home, travel concessions reset and you resume full (resident) prayer practice.
+            </td>
+          </tr>`;
+        }
+      
+        legsResultsHTML += `</tbody></table>`;
+        document.getElementById('legsResults').innerHTML = legsResultsHTML;
+      }
+      
+      document.getElementById('calculateBtn').addEventListener('click', async function() {
+        const calculateBtn = document.getElementById('calculateBtn');
+        // Hide the map, results, and niat section initially
+        document.getElementById('map').style.display = "none";
+        document.getElementById('resultsSection').style.display = "none";
+        document.getElementById('niatSection').style.display = "none";
+      
+        showLoadingModal();
+        calculateBtn.disabled = true;
+      
+        try {
+          markers.forEach(marker => map.removeLayer(marker));
+          markers = [];
+          if (polyline) {
+            map.removeLayer(polyline);
+          }
+      
+          const startingLocation = document.getElementById('startingLocation').value;
+          let startingData = await geocodeAddress(startingLocation);
+          let startingCountryLocal = startingData.display_name ? extractCountry(startingData.display_name) : "Unknown";
+          let currentOrigin = startingData;
+      
+          markers.push(L.marker([currentOrigin.lat, currentOrigin.lon], {
+            title: "Start",
+            icon: L.icon({
+              iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-black.png',
+              shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+              iconSize: [25, 41],
+              iconAnchor: [12, 41],
+              popupAnchor: [1, -34]
+            })
+          }).bindPopup("Start").addTo(map));
+      
+          const journeyCoords = [currentOrigin];
+          let legsData = [];
+          const legRows = document.querySelectorAll('#legsTbody tr:not(.placeholder-row)');
+          for (let i = 0; i < legRows.length; i++) {
+            const row = legRows[i];
+            const index = row.getAttribute('data-index');
+            const destinationInput = row.querySelector('.destination-input').value;
+            const travelDuration = parseFloat(row.querySelector('.travel-duration-input').value);
+            const stayDuration = parseFloat(row.querySelector('.stay-duration-input').value) || 0;
+      
+            const destinationData = await geocodeAddress(destinationInput);
+            const legDistance = calculateDistance(currentOrigin, destinationData);
+      
+            legsData.push({
+              leg: index,
+              origin: currentOrigin,
+              destination: destinationData,
+              distance: legDistance,
+              travelDuration: travelDuration,
+              stayDuration: stayDuration
+            });
+      
+            if (i === 0) {
+              document.getElementById(`fromCountry-${index}`).innerText = startingCountryLocal;
+            } else {
+              document.getElementById(`fromCountry-${index}`).innerText = extractCountry(legsData[i-1].destination.display_name);
+            }
+      
+            markers.push(L.marker([destinationData.lat, destinationData.lon], {
+              title: `Leg ${index} Destination`,
+              icon: L.icon({
+                iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-${markerColors[i % markerColors.length]}.png`,
+                shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+                iconSize: [25, 41],
+                iconAnchor: [12, 41],
+                popupAnchor: [1, -34]
+              })
+            }).bindPopup(`Leg ${index}: ${destinationInput}`).addTo(map));
+      
+            currentOrigin = destinationData;
+            journeyCoords.push(destinationData);
+          }
+      
+          const isReturningHome = document.getElementById('returnHome').checked;
+          if (isReturningHome) {
+            const startingCoords = await geocodeAddress(startingLocation);
+            const returnDistance = calculateDistance(currentOrigin, startingCoords);
+            legsData.push({
+              leg: "Return Home",
+              origin: currentOrigin,
+              destination: startingCoords,
+              distance: returnDistance,
+              travelDuration: 0,
+              stayDuration: 0
+            });
+            journeyCoords.push(startingCoords);
+          }
+      
+          // Show the map container first so Leaflet can calculate its dimensions correctly
+          document.getElementById('map').style.display = "block";
+          map.invalidateSize();
+      
+          // Add polyline and adjust map view
+          polyline = L.polyline(journeyCoords, {color: 'black', dashArray: '4, 8'}).addTo(map);
+          map.fitBounds(polyline.getBounds(), {padding: [50, 50]});
+      
+          await generateResults(legsData, isReturningHome, startingCountryLocal);
+          document.getElementById('resultsSection').style.display = "block";
+          // Now show the niat section once eligibility calculation is complete.
+          document.getElementById('niatSection').style.display = "block";
+        } catch (error) {
+          console.error("Error during processing:", error);
+        } finally {
+          hideLoadingModal();
+          calculateBtn.disabled = false;
+        }
+      });
+      
+      // Loading modal functions.
+      function showLoadingModal() {
+        document.getElementById('loadingModal').style.display = "block";
+        let iconElem = document.getElementById('animIcon');
+        let icons = ["✈", "🚗"];
+        let idx = 0;
+        window.loadingInterval = setInterval(function() {
+          iconElem.innerHTML = icons[idx];
+          idx = (idx + 1) % icons.length;
+        }, 500);
+      }
+      function hideLoadingModal() {
+        document.getElementById('loadingModal').style.display = "none";
+        clearInterval(window.loadingInterval);
+      }
+      
+      // Map initialization.
+      function initMap() {
+        map = L.map('map').setView([20, 0], 2);
+        L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
+          maxZoom: 19,
+          subdomains: ['a','b','c'],
+          attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+      }
+      
+      // Modal close listener.
+      document.querySelector('.close-modal').addEventListener('click', function() {
+        document.getElementById('modal').style.display = "none";
+      });
+      
+      // Global error listener.
+      window.addEventListener('error', function(e) {
+        console.error("Global error:", e.error);
+      });
+      
+      // Populate Madhhab Summary Cards with improved formatting.
+      function populateMadhhabCards() {
+        const cardsContainer = document.getElementById('madhhabCards');
+        cardsContainer.innerHTML = ""; // Clear any existing cards
+
+        const madhhabs = [
+          {
+            name: "Hanafi",
+            guideline: `<ul>
+                          <li><strong>Qasr:</strong> Shortened (4→2 rak‘ahs) allowed for travel up to 15 days.</li>
+                          <li><strong>Combining:</strong> Not permitted; each prayer must be performed at its designated time.</li>
+                        </ul>`
+          },
+          {
+            name: "Maliki",
+            guideline: `<ul>
+                          <li><strong>Qasr:</strong> Allowed if your stay is under 4 days.</li>
+                          <li><strong>Combining:</strong> Not permitted; prayers must be kept separate.</li>
+                        </ul>`
+          },
+          {
+            name: "Shafi‘i",
+            guideline: `<ul>
+                          <li><strong>Qasr:</strong> Allowed if your stay is under 4 days.</li>
+                          <li><strong>Combining:</strong> Permitted using:
+                            <ul>
+                              <li><strong>Jamaa Takhir (delaying):</strong> Delay the earlier prayer to join the later one.</li>
+                              <li><strong>Jamaa Takdim (advancing):</strong> Advance the later prayer to the earlier time.</li>
+                            </ul>
+                          </li>
+                        </ul>`
+          },
+          {
+            name: "Hanbali",
+            guideline: `<ul>
+                          <li><strong>Qasr:</strong> Allowed if your stay is under 4 days.</li>
+                          <li><strong>Combining:</strong> Permitted using:
+                            <ul>
+                              <li><strong>Jamaa Takdim (advancing):</strong> Often preferred (e.g., perform Asr at Dhuhr time).</li>
+                              <li><strong>Jamaa Takhir (delaying):</strong> Alternatively, delay the earlier prayer.</li>
+                            </ul>
+                          </li>
+                        </ul>`
+          }
+        ];
+
+        madhhabs.forEach(madhhab => {
+          const card = document.createElement('div');
+          card.className = "madhhab-card";
+          card.innerHTML = `<div class="madhhab-header">${madhhab.name}</div>${madhhab.guideline}`;
+          card.addEventListener('click', function() {
+             const modalBody = document.getElementById('modalBody');
+             modalBody.innerHTML = `<h3>${madhhab.name} Madhhab Detailed Guideline</h3><div>${madhhab.guideline}</div>`;
+             document.getElementById('modal').style.display = "block";
+          });
+          cardsContainer.appendChild(card);
+        });
+      }
+      
+      // Initialize map, travel legs table, and populate Madhhab cards on DOMContentLoaded.
+      document.addEventListener("DOMContentLoaded", function() {
+        initMap();
+        (function initLegsTable() {
+          const tbody = document.getElementById('legsTbody');
+          tbody.innerHTML = "";
+          legCount = 0;
+          const placeholder = document.createElement('tr');
+          placeholder.className = 'placeholder-row';
+          placeholder.innerHTML = `<td colspan="5">Click here to add a travel leg</td>`;
+          placeholder.addEventListener('click', addLegRow);
+          tbody.appendChild(placeholder);
+        })();
+        populateMadhhabCards();
+      });
+    })();
+  </script>
+</body>
+</html>
