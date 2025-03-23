@@ -67,6 +67,7 @@
       margin-top: 20px;
       table-layout: fixed;
     }
+    /* Updated header to include a new column for Full Address */
     #legsTable th, #legsTable td {
       border: 1px solid #ddd;
       padding: 8px;
@@ -91,15 +92,6 @@
       border-radius: 3px;
       padding: 5px 10px;
       cursor: pointer;
-    }
-    /* Destination cell container */
-    .dest-container {
-      text-align: left;
-    }
-    .full-address {
-      color: #555;
-      font-size: 0.9em;
-      margin-top: 4px;
     }
     /* ===== Map Container ===== */
     #map {
@@ -245,6 +237,7 @@
         <tr>
           <th>From Country</th>
           <th>Destination Country</th>
+          <th>Destination Full Address</th>
           <th>Travel Duration (days)</th>
           <th>Stay Duration (days)</th>
           <th>Action</th>
@@ -252,7 +245,7 @@
       </thead>
       <tbody id="legsTbody">
         <tr class="placeholder-row">
-          <td colspan="5">Click here to add a travel leg</td>
+          <td colspan="6">Click here to add a travel leg</td>
         </tr>
       </tbody>
     </table>
@@ -405,12 +398,8 @@
         row.setAttribute('data-index', currentIndex);
         row.innerHTML = `
           <td id="fromCountry-${currentIndex}">--</td>
-          <td>
-            <div class="dest-container">
-              <input type="text" class="destination-input" list="locationSuggestions" placeholder="Enter destination" required>
-              <div class="full-address"></div>
-            </div>
-          </td>
+          <td><input type="text" class="destination-input" list="locationSuggestions" placeholder="Enter destination" required></td>
+          <td class="destination-full-address"></td>
           <td><input type="number" class="travel-duration-input" min="1" placeholder="Days" required></td>
           <td><input type="number" class="stay-duration-input" min="0" placeholder="Days" required></td>
           <td><button type="button" class="remove-btn">Remove</button></td>
@@ -418,7 +407,7 @@
         tbody.appendChild(row);
         const newPlaceholder = document.createElement('tr');
         newPlaceholder.className = 'placeholder-row';
-        newPlaceholder.innerHTML = `<td colspan="5">Click here to add a travel leg</td>`;
+        newPlaceholder.innerHTML = `<td colspan="6">Click here to add a travel leg</td>`;
         newPlaceholder.addEventListener('click', addLegRow);
         tbody.appendChild(newPlaceholder);
         updateFromCountries();
@@ -442,9 +431,10 @@
         rows[0].cells[0].innerText = startingCountry;
         for(let i = 1; i < rows.length; i++) {
           const prevRow = rows[i - 1];
-          const fullAddressDiv = prevRow.querySelector('.full-address');
-          if(fullAddressDiv && fullAddressDiv.innerText.trim() !== "") {
-            rows[i].cells[0].innerText = extractCountry(fullAddressDiv.innerText);
+          // Get the full address from the dedicated cell.
+          const fullAddressCell = prevRow.querySelector('.destination-full-address');
+          if(fullAddressCell && fullAddressCell.innerText.trim() !== "") {
+            rows[i].cells[0].innerText = extractCountry(fullAddressCell.innerText);
           }
         }
       }
@@ -456,9 +446,10 @@
             let data = await geocodeAddress(input.value);
             let row = input.closest('tr');
             if(!row) return;
-            const fullAddressDiv = row.querySelector('.full-address');
-            if(fullAddressDiv) {
-              fullAddressDiv.innerText = data.display_name;
+            // Update the dedicated full address cell.
+            const fullAddressCell = row.querySelector('.destination-full-address');
+            if(fullAddressCell) {
+              fullAddressCell.innerText = data.display_name;
             }
             updateFromCountries();
           } catch(err) {
@@ -550,6 +541,7 @@
             <tr>
               <th>From Country</th>
               <th>Destination Country</th>
+              <th>Destination Full Address</th>
               <th>Travel Duration (days)</th>
               <th>Stay Duration (days)</th>
               <th>Narrative</th>
@@ -607,6 +599,7 @@
           legsResultsHTML += `<tr>
             <td>${fromCountry}</td>
             <td>${destCountry}</td>
+            <td class="destination-full-address-cell">${leg.destination.display_name}</td>
             <td>${leg.travelDuration}</td>
             <td>${leg.stayDuration}</td>
             <td>${narrative}</td>
@@ -616,7 +609,7 @@
         // If user opted to return home, add a separate row.
         if (isReturningHome) {
           legsResultsHTML += `<tr>
-            <td colspan="5" style="text-align:center;">
+            <td colspan="6" style="text-align:center;">
               Upon returning home, travel concessions reset and you resume full (resident) prayer practice.
             </td>
           </tr>`;
@@ -841,7 +834,7 @@
           legCount = 0;
           const placeholder = document.createElement('tr');
           placeholder.className = 'placeholder-row';
-          placeholder.innerHTML = `<td colspan="5">Click here to add a travel leg</td>`;
+          placeholder.innerHTML = `<td colspan="6">Click here to add a travel leg</td>`;
           placeholder.addEventListener('click', addLegRow);
           tbody.appendChild(placeholder);
         })();
