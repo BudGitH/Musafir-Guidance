@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Musafir Multi-Leg Prayer Eligibility Checker</title>
   <!-- Leaflet CSS for Map Display -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/leaflet.css" />
   <style>
     /* ===== Global Styles ===== */
     body {
@@ -303,8 +303,8 @@
     </div>
   </div>
   
-  <!-- Leaflet JS Library (with defer) -->
-  <script defer src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+  <!-- Leaflet JS Library from cdnjs (with defer) -->
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/leaflet.js"></script>
   <!-- Custom JavaScript (with defer) -->
   <script defer>
     (function() {
@@ -513,7 +513,6 @@
         let jamaaDecision = "";
         let jamaaDecisionArabic = "";
         
-        // Determine matching prayer and jamaa decision based on the selected prayer.
         if (selectedPrayer === "Zuhr") {
           matchingPrayer = "Asr";
           jamaaDecision = "Jamaa Takhir (delaying)";
@@ -532,9 +531,7 @@
           jamaaDecisionArabic = "جَمَاعَةُ تَقْدِيمٍ";
         }
         
-        // Build the Arabic niat text with shukkles.
         const niatArabic = `نَوَيْتُ أَنْ أُصَلِّيَ صَلَاةَ ${arabicNames[selectedPrayer]} بِقَصْرٍ، وَ${jamaaDecisionArabic} صَلَاةَ ${arabicNames[matchingPrayer]}.`;
-        // English explanation.
         const niatEnglish = `I intend to pray ${selectedPrayer} with Qasr (shortened prayer) and ${jamaaDecision} the ${matchingPrayer} prayer.`;
         
         document.getElementById('niatResult').innerHTML = `<div style="text-align:center; margin-bottom:10px;">${niatArabic}</div><div style="font-size:0.8em; text-align:center; color:#555;">${niatEnglish}</div>`;
@@ -744,6 +741,8 @@
       
       // Map initialization.
       function initMap() {
+        // Now that we are using window.onload,
+        // this function should only be called once L is defined.
         map = L.map('map').setView([20, 0], 2);
         L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
           maxZoom: 19,
@@ -757,7 +756,7 @@
         document.getElementById('modal').style.display = "none";
       });
       
-      // Populate Madhhab Summary Cards with improved formatting.
+      // Populate Madhhab Summary Cards.
       function populateMadhhabCards() {
         const cardsContainer = document.getElementById('madhhabCards');
         cardsContainer.innerHTML = "";
@@ -814,8 +813,8 @@
         });
       }
       
-      // Initialize map, travel legs table, and populate Madhhab cards on DOMContentLoaded.
-      document.addEventListener("DOMContentLoaded", function() {
+      // Initialize when window is fully loaded.
+      window.onload = function() {
         initMap();
         (function initLegsTable() {
           const tbody = document.getElementById('legsTbody');
@@ -828,7 +827,7 @@
           tbody.appendChild(placeholder);
         })();
         populateMadhhabCards();
-      });
+      };
     })();
   </script>
 </body>
