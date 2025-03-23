@@ -49,6 +49,16 @@
       cursor: pointer;
       margin-top: 10px;
     }
+    /* Audio button styling */
+    #playArabicBtn, #playEnglishBtn, #stopAudioBtn {
+      background: #eee;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 1em;
+      padding: 5px 10px;
+      margin-left: 10px;
+    }
     /* ===== Calculate Button ===== */
     #calculateBtn {
       background: #90ee90;
@@ -267,6 +277,10 @@
         <option value="Isha">Isha (ٱلْعِشَاء)</option>
       </select>
       <button type="button" id="generateNiatBtn">Generate Niat</button>
+      <!-- Two audio buttons for Arabic and English, and a Stop Audio button -->
+      <button type="button" id="playArabicBtn" title="Play Arabic">🔊 Arabic</button>
+      <button type="button" id="playEnglishBtn" title="Play English">🔊 English</button>
+      <button type="button" id="stopAudioBtn" title="Stop Audio">⏹ Stop</button>
       <div id="niatResult" style="font-size: 1.5em; margin-top: 10px;"></div>
     </div>
     
@@ -300,7 +314,12 @@
   <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
   <script>
     (function() {
-      // All code is wrapped in an IIFE to avoid duplicate global declarations.
+      // Store available voices
+      let availableVoices = [];
+      function loadVoices() {
+        availableVoices = speechSynthesis.getVoices();
+      }
+      window.speechSynthesis.onvoiceschanged = loadVoices;
       
       // Debounce function.
       function debounce(func, wait) {
@@ -431,7 +450,6 @@
         rows[0].cells[0].innerText = startingCountry;
         for(let i = 1; i < rows.length; i++) {
           const prevRow = rows[i - 1];
-          // Get the full address from the dedicated cell.
           const fullAddressCell = prevRow.querySelector('.destination-full-address');
           if(fullAddressCell && fullAddressCell.innerText.trim() !== "") {
             rows[i].cells[0].innerText = extractCountry(fullAddressCell.innerText);
@@ -446,7 +464,6 @@
             let data = await geocodeAddress(input.value);
             let row = input.closest('tr');
             if(!row) return;
-            // Update the dedicated full address cell.
             const fullAddressCell = row.querySelector('.destination-full-address');
             if(fullAddressCell) {
               fullAddressCell.innerText = data.display_name;
@@ -505,7 +522,6 @@
         let jamaaDecision = "";
         let jamaaDecisionArabic = "";
         
-        // Determine matching prayer and jamaa decision based on the selected prayer.
         if (selectedPrayer === "Zuhr") {
           matchingPrayer = "Asr";
           jamaaDecision = "Jamaa Takhir (delaying)";
@@ -524,12 +540,48 @@
           jamaaDecisionArabic = "جَمَاعَةُ تَقْدِيمٍ";
         }
         
-        // Build the Arabic niat text with shukkles.
-        const niatArabic = `نَوَيْتُ أَنْ أُصَلِّيَ صَلَاةَ ${arabicNames[selectedPrayer]} بِقَصْرٍ، وَ${jamaaDecisionArabic} صَلَاةَ ${arabicNames[matchingPrayer]}.`;
-        // English explanation.
-        const niatEnglish = `I intend to pray ${selectedPrayer} with Qasr (shortened prayer) and ${jamaaDecision} the ${matchingPrayer} prayer.`;
+        const arabicNiat = `نَوَيْتُ أَنْ أُصَلِّيَ صَلَاةَ ${arabicNames[selectedPrayer]} بِقَصْرٍ، وَ${jamaaDecisionArabic} صَلَاةَ ${arabicNames[matchingPrayer]}.`;
+        const englishNiat = `I intend to pray ${selectedPrayer} with Qasr (shortened prayer) and ${jamaaDecision} the ${matchingPrayer} prayer.`;
         
-        document.getElementById('niatResult').innerHTML = `<div style="text-align:center; margin-bottom:10px;">${niatArabic}</div><div style="font-size:0.8em; text-align:center; color:#555;">${niatEnglish}</div>`;
+        document.getElementById('niatResult').innerHTML = `<div style="text-align:center; margin-bottom:10px;">${arabicNiat}</div><div style="font-size:0.8em; text-align:center; color:#555;">${englishNiat}</div>`;
+        document.getElementById('niatResult').setAttribute('data-arabic', arabicNiat);
+        document.getElementById('niatResult').setAttribute('data-english', englishNiat);
+      });
+      
+      // Audio functionality for Arabic niat.
+      document.getElementById('playArabicBtn').addEventListener('click', function() {
+        const arabicText = document.getElementById('niatResult').getAttribute('data-arabic') || "";
+        if(arabicText.trim() !== "") {
+          const utterance = new SpeechSynthesisUtterance(arabicText);
+          const arabicVoice = availableVoices.find(voice => voice.lang.startsWith("ar"));
+          if(arabicVoice) {
+            utterance.voice = arabicVoice;
+          }
+          utterance.lang = 'ar-SA';
+          speechSynthesis.speak(utterance);
+        }
+      });
+      
+      // Audio functionality for English niat.
+      document.getElementById('playEnglishBtn').addEventListener('click', function() {
+        const englishText = document.getElementById('niatResult').getAttribute('data-english') || "";
+        if(englishText.trim() !== "") {
+          const utterance = new SpeechSynthesisUtterance(englishText);
+          const englishVoice = availableVoices.find(voice => voice.lang.startsWith("en"));
+          if(englishVoice) {
+            utterance.voice = englishVoice;
+          }
+          // Adjust for more natural speech
+          utterance.rate = 1.0;
+          utterance.pitch = 1.0;
+          utterance.lang = 'en-US';
+          speechSynthesis.speak(utterance);
+        }
+      });
+      
+      // Stop Audio Button functionality.
+      document.getElementById('stopAudioBtn').addEventListener('click', function() {
+        speechSynthesis.cancel();
       });
       
       // ---------------------------
@@ -556,10 +608,9 @@
           const elig = determineEligibility(leg.distance, leg.stayDuration);
           
           if (leg.leg === "Return Home") {
-            // For the Return Home leg, display a message with the destination country and general travel rules.
             narrative = `<p>Since you are travelling back to <strong>${destCountry}</strong>, the following rules apply during your travel phase:</p>
             <ul>
-              <li><strong>Hanafi:</strong> Qasr is permitted (shortened prayer: 2 rak‘ahs) during travel up to 15 days; combining is not permitted.</li>
+              <li><strong>Hanafi:</strong> Qasr is permitted (2 rak‘ahs) during travel up to 15 days; combining is not permitted.</li>
               <li><strong>Maliki:</strong> Qasr is permitted if the stay is under 4 days; combining is not permitted.</li>
               <li><strong>Shafi‘i:</strong> Qasr is permitted if the stay is under 4 days; combining is permitted (using either Jamaa Takhir or Jamaa Takdim).</li>
               <li><strong>Hanbali:</strong> Qasr is permitted if the stay is under 4 days; combining is permitted (with Jamaa Takdim generally preferred, though Jamaa Takhir is acceptable).</li>
@@ -570,27 +621,23 @@
             narrative = `<p>You have traveled <strong>${leg.distance.toFixed(2)} km</strong> from <strong>${fromCountry}</strong> to <strong>${destCountry}</strong>, meeting the minimum requirement for travel concessions.</p>`;
             narrative += `<p>Based on your stay of <strong>${leg.stayDuration} day(s)</strong> at ${destCountry}, the following guidelines apply during your travel phase:</p>`;
             narrative += `<ul>`;
-            // Hanafi narrative
             if (leg.stayDuration < 15) {
-              narrative += `<li><strong>Hanafi:</strong> Qualifies for <strong>Qasr</strong> (2 rak‘ahs instead of 4). Combining is not permitted.</li>`;
+              narrative += `<li><strong>Hanafi:</strong> Qualifies for Qasr (2 rak‘ahs instead of 4); combining is not permitted.</li>`;
             } else {
               narrative += `<li><strong>Hanafi:</strong> Exceeds the 15-day limit; full (resident) prayer is required.</li>`;
             }
-            // Maliki narrative
             if (leg.stayDuration < 4) {
-              narrative += `<li><strong>Maliki:</strong> Qualifies for <strong>Qasr</strong> as the stay is under 4 days; combining is not permitted.</li>`;
+              narrative += `<li><strong>Maliki:</strong> Qualifies for Qasr as the stay is under 4 days; combining is not permitted.</li>`;
             } else {
               narrative += `<li><strong>Maliki:</strong> Exceeds the 4-day limit; full prayer obligations apply.</li>`;
             }
-            // Shafi‘i narrative
             if (leg.stayDuration < 4) {
-              narrative += `<li><strong>Shafi‘i:</strong> Qualifies for <strong>Qasr</strong> and allows combining. You may choose either <strong>Jamaa Takhir</strong> (delaying) or <strong>Jamaa Takdim</strong> (advancing).</li>`;
+              narrative += `<li><strong>Shafi‘i:</strong> Qualifies for Qasr and allows combining. You may choose either Jamaa Takhir (delaying) or Jamaa Takdim (advancing).</li>`;
             } else {
               narrative += `<li><strong>Shafi‘i:</strong> Exceeds the 4-day limit; full (resident) prayer is required.</li>`;
             }
-            // Hanbali narrative
             if (leg.stayDuration < 4) {
-              narrative += `<li><strong>Hanbali:</strong> Qualifies for <strong>Qasr</strong> and allows combining. The preferred method is <strong>Jamaa Takdim</strong> (advancing), though <strong>Jamaa Takhir</strong> (delaying) is also acceptable.</li>`;
+              narrative += `<li><strong>Hanbali:</strong> Qualifies for Qasr and allows combining. The preferred method is Jamaa Takdim (advancing), though Jamaa Takhir (delaying) is also acceptable.</li>`;
             } else {
               narrative += `<li><strong>Hanbali:</strong> Exceeds the 4-day limit; full prayer is required.</li>`;
             }
@@ -606,7 +653,6 @@
           </tr>`;
         });
       
-        // If user opted to return home, add a separate row.
         if (isReturningHome) {
           legsResultsHTML += `<tr>
             <td colspan="6" style="text-align:center;">
