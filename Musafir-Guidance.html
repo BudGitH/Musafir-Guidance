@@ -2,891 +2,998 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Musafir Multi-Leg Prayer Eligibility Checker</title>
-  <!-- Leaflet CSS for Map Display -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0f766e">
+  <meta name="description" content="Check when you may shorten (qasr) and combine (jamʿ) prayers on a journey, by madhhab.">
+  <title>Musafir Guidance · Traveller's Prayer Checker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
   <style>
-    /* ===== Global Styles ===== */
-    body {
-      font-family: Arial, sans-serif;
-      background: #f4f4f4;
-      margin: 0;
-      padding: 20px;
+    :root {
+      --bg: #f5f7f8;
+      --surface: #ffffff;
+      --surface-2: #f1f5f4;
+      --text: #0f172a;
+      --muted: #5b6474;
+      --border: #e2e7eb;
+      --primary: #0f766e;
+      --primary-strong: #0b5f58;
+      --primary-soft: #e6f4f1;
+      --on-primary: #ffffff;
+      --ok: #15803d;  --ok-bg: #e7f6ec;
+      --warn: #a16207; --warn-bg: #fdf5e1;
+      --no: #b42318;  --no-bg: #fdecea;
+      --mute-bg: #eef1f4;
+      --radius: 16px;
+      --radius-sm: 10px;
+      --shadow: 0 1px 2px rgba(15,23,42,.04), 0 6px 20px rgba(15,23,42,.06);
+      --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      --arabic: "Amiri", "Scheherazade New", "Traditional Arabic", serif;
     }
-    .container {
-      max-width: 1000px;
-      margin: auto;
-      background: #fff;
-      padding: 20px;
-      border-radius: 10px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0b1114; --surface: #121a1f; --surface-2: #172229; --text: #e6edf2; --muted: #9aa8b4;
+        --border: #24323b; --primary: #2dd4bf; --primary-strong: #5eead4; --primary-soft: #0f2a27; --on-primary: #032420;
+        --ok: #4ade80; --ok-bg: #0e2a19; --warn: #fbbf24; --warn-bg: #2a210c; --no: #f87171; --no-bg: #2b1414; --mute-bg: #1c262d;
+        --shadow: 0 1px 2px rgba(0,0,0,.3), 0 6px 20px rgba(0,0,0,.25);
+      }
     }
-    h1, h2, h3 {
-      text-align: center;
+    *, *::before, *::after { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    html { -webkit-text-size-adjust: 100%; }
+    body { margin: 0; font-family: var(--font); background: var(--bg); color: var(--text); line-height: 1.55; }
+    a { color: var(--primary); }
+    .wrap { max-width: 920px; margin: 0 auto; padding: 20px 16px 120px; }
+    @media (min-width: 720px) { .wrap { padding: 36px 24px 80px; } }
+
+    /* Header */
+    .brand { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
+    .brand-mark { width: 40px; height: 40px; border-radius: 12px; background: var(--primary); color: var(--on-primary); display: grid; place-items: center; flex: none; }
+    h1 { font-size: clamp(1.4rem, 1.1rem + 1.4vw, 2rem); margin: 0; letter-spacing: -.02em; }
+    .lede { color: var(--muted); margin: 6px 0 22px; max-width: 62ch; }
+
+    /* Cards */
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 18px; margin-bottom: 16px; }
+    @media (min-width: 720px) { .card { padding: 24px; } }
+    .card h2 { font-size: 1.1rem; margin: 0 0 4px; letter-spacing: -.01em; }
+    .card-sub { color: var(--muted); font-size: .92rem; margin: 0 0 16px; }
+    .step-label { display: inline-flex; align-items: center; gap: 8px; font-size: .78rem; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--primary); margin-bottom: 6px; }
+
+    /* Fields */
+    .field { margin-bottom: 14px; position: relative; }
+    .field:last-child { margin-bottom: 0; }
+    label, .label { display: block; font-size: .88rem; font-weight: 600; margin-bottom: 6px; }
+    input[type=text], input[type=date], input[type=search] {
+      width: 100%; font: inherit; font-size: 16px; color: var(--text); background: var(--surface);
+      border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 11px 12px; min-height: 46px;
+      transition: border-color .15s, box-shadow .15s; -webkit-appearance: none; appearance: none;
     }
-    p {
-      line-height: 1.6;
-    }
-    label {
-      font-weight: bold;
-      display: block;
-      margin-top: 10px;
-    }
-    input[type="text"], input[type="number"] {
-      padding: 8px;
-      margin-top: 5px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      width: 100%;
-      box-sizing: border-box;
-    }
-    button {
-      padding: 10px 15px;
-      border: none;
-      border-radius: 5px;
-      font-size: 16px;
-      cursor: pointer;
-      margin-top: 10px;
-    }
-    /* Audio button styling */
-    #playArabicBtn, #playEnglishBtn, #stopAudioBtn {
-      background: #eee;
-      border: 1px solid #ccc;
-      border-radius: 5px;
-      cursor: pointer;
-      font-size: 1em;
-      padding: 5px 10px;
-      margin-left: 10px;
-    }
-    /* ===== Calculate Button ===== */
-    #calculateBtn {
-      background: #90ee90;
-      display: block;
-      margin: 20px auto;
-      position: relative;
-    }
-    #calculateBtn:disabled {
-      background: #ccc;
-      cursor: not-allowed;
-    }
-    /* ===== Legs Table ===== */
-    #legsTable {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 20px;
-      table-layout: fixed;
-    }
-    /* Updated header to include a new column for Full Address */
-    #legsTable th, #legsTable td {
-      border: 1px solid #ddd;
-      padding: 8px;
-      text-align: center;
-      word-wrap: break-word;
-    }
-    #legsTable th {
-      background: #f2f2f2;
-    }
-    #legsTable tr:hover {
-      background: #e0f7fa;
-    }
-    .placeholder-row {
-      background: #e9ecef;
-      cursor: pointer;
-      font-style: italic;
-    }
-    .remove-btn {
-      background: #dc3545;
-      color: #fff;
-      border: none;
-      border-radius: 3px;
-      padding: 5px 10px;
-      cursor: pointer;
-    }
-    /* ===== Map Container ===== */
-    #map {
-      height: 300px;
-      margin-top: 20px;
-      border: 1px solid #ddd;
-      border-radius: 10px;
-      display: none;
-    }
-    /* ===== Results Section ===== */
-    .results-section {
-      margin-top: 30px;
-      display: none;
-    }
-    .leg-result-table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-bottom: 20px;
-    }
-    .leg-result-table th, .leg-result-table td {
-      border: 1px solid #ccc;
-      padding: 8px;
-      text-align: left;
-    }
-    .leg-result-table th {
-      background: #e9ecef;
-    }
-    /* Mini Madhhab Cards Container */
-    .madhhab-mini-cards {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: space-between;
-      gap: 10px;
-      margin-bottom: 20px;
-    }
-    /* Mini Madhhab Card Styles */
-    .madhhab-card {
-      flex: 1 1 calc(25% - 10px);
-      box-sizing: border-box;
-      border: 1px solid #ccc;
-      border-radius: 8px;
-      padding: 10px;
-      transition: transform 0.2s, background 0.2s;
-      cursor: pointer;
-      background: #ffe5b4;
-      text-align: left;
-    }
-    .madhhab-card:hover {
-      transform: scale(1.03);
-      background: #ffcc80;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-    }
-    .madhhab-header {
-      font-weight: bold;
-      font-size: 1.1em;
-      margin-bottom: 5px;
-    }
-    /* ===== Niat Section ===== */
-    .niat-section {
-      border: 1px solid #ddd;
-      padding: 10px;
-      margin: 20px 0;
-      border-radius: 5px;
-      background: #f9f9f9;
-    }
-    /* Hide the niat section initially */
-    #niatSection {
-      display: none;
-    }
-    /* ===== Modal Styles ===== */
-    .modal {
-      display: none;
-      position: fixed;
-      z-index: 1000;
-      left: 0;
-      top: 0;
-      width: 100%;
-      height: 100%;
-      overflow: auto;
-      background: rgba(0,0,0,0.5);
-    }
-    .modal-content {
-      background: #fff;
-      margin: 10% auto;
-      padding: 20px;
-      width: 80%;
-      max-width: 700px;
-      border-radius: 10px;
-      position: relative;
-    }
-    .close-modal {
-      color: #aaa;
-      float: right;
-      font-size: 28px;
-      font-weight: bold;
-      cursor: pointer;
-    }
-    .close-modal:hover {
-      color: #000;
-    }
-    .reference {
-      font-size: 0.9em;
-      color: #555;
-      margin-top: 10px;
-    }
-    /* ===== Loading Modal Styles ===== */
-    .loading-modal-content {
-      text-align: center;
-    }
-    .loading-animation {
-      font-size: 48px;
-      margin-top: 20px;
-      animation: cycleIcon 1s infinite;
-    }
-    @keyframes cycleIcon {
-      0% { content: '✈'; }
-      50% { content: '🚗'; }
-      100% { content: '✈'; }
-    }
+    input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 22%, transparent); }
+    .invalid input { border-color: var(--no); }
+    .err { color: var(--no); font-size: .84rem; margin: 6px 0 0; }
+    .err:empty { display: none; }
+    .hint { color: var(--muted); font-size: .84rem; margin: 6px 0 0; }
+    .hint:empty { display: none; }
+    .resolved::before { content: "📍 "; }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    /* Autocomplete */
+    .ac { position: relative; }
+    .ac-list { position: absolute; z-index: 1200; left: 0; right: 0; top: calc(100% + 4px); margin: 0; padding: 6px; list-style: none;
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); box-shadow: var(--shadow); max-height: 280px; overflow: auto; }
+    .ac-list li { padding: 10px 10px; border-radius: 8px; cursor: pointer; display: flex; flex-direction: column; }
+    .ac-list li[aria-selected=true], .ac-list li:hover { background: var(--primary-soft); }
+    .ac-name { font-weight: 600; }
+    .ac-sub { font-size: .82rem; color: var(--muted); }
+
+    /* Stops */
+    .stops { display: grid; gap: 12px; }
+    .stop { border: 1px solid var(--border); border-radius: 14px; padding: 14px; background: var(--surface-2); }
+    .stop-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .stop-num { width: 28px; height: 28px; border-radius: 50%; background: var(--primary); color: var(--on-primary); display: grid; place-items: center; font-weight: 700; font-size: .85rem; flex: none; }
+    .stop-head h3 { font-size: 1rem; margin: 0; flex: 1; }
+    .icon-btn { border: 0; background: transparent; color: var(--muted); width: 40px; height: 40px; border-radius: 10px; cursor: pointer; font-size: 1.1rem; display: grid; place-items: center; }
+    .icon-btn:hover { background: var(--mute-bg); color: var(--no); }
+    .icon-btn:disabled { opacity: .35; cursor: not-allowed; background: transparent; color: var(--muted); }
+
+    /* Buttons */
+    .btn { font: inherit; font-weight: 600; border-radius: 12px; min-height: 46px; padding: 0 18px; cursor: pointer; border: 1px solid transparent; display: inline-flex; align-items: center; justify-content: center; gap: 8px; transition: background .15s, transform .05s; }
+    .btn:active { transform: translateY(1px); }
+    .btn:focus-visible, .icon-btn:focus-visible, .seg label:focus-within { outline: 3px solid color-mix(in srgb, var(--primary) 40%, transparent); outline-offset: 2px; }
+    .btn-primary { background: var(--primary); color: var(--on-primary); }
+    .btn-primary:hover { background: var(--primary-strong); }
+    .btn-primary[disabled] { opacity: .7; cursor: progress; }
+    .btn-ghost { background: transparent; color: var(--primary); border: 1px dashed color-mix(in srgb, var(--primary) 50%, var(--border)); width: 100%; margin-top: 12px; }
+    .btn-ghost:hover { background: var(--primary-soft); }
+    .btn-sm { min-height: 36px; padding: 0 12px; font-size: .85rem; border-radius: 10px; background: var(--mute-bg); color: var(--text); }
+    .spinner { width: 18px; height: 18px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin .7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Toggle */
+    .toggle { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 14px 0 0; margin-top: 14px; border-top: 1px solid var(--border); cursor: pointer; font-weight: 500; }
+    .toggle input { position: absolute; opacity: 0; pointer-events: none; }
+    .switch { width: 46px; height: 28px; border-radius: 999px; background: var(--border); position: relative; flex: none; transition: background .2s; }
+    .switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.25); transition: transform .2s; }
+    .toggle input:checked + .switch { background: var(--primary); }
+    .toggle input:checked + .switch::after { transform: translateX(18px); }
+    .toggle input:focus-visible + .switch { outline: 3px solid color-mix(in srgb, var(--primary) 40%, transparent); outline-offset: 2px; }
+
+    /* Segmented control */
+    .seg { display: flex; flex-wrap: wrap; gap: 6px; background: var(--mute-bg); padding: 4px; border-radius: 12px; border: 0; margin: 0; }
+    .seg legend { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+    .seg label { flex: 1 1 auto; margin: 0; text-align: center; font-weight: 600; font-size: .88rem; padding: 9px 12px; border-radius: 9px; cursor: pointer; color: var(--muted); min-height: 38px; display: flex; align-items: center; justify-content: center; }
+    .seg input { position: absolute; opacity: 0; pointer-events: none; }
+    .seg label:has(input:checked) { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px rgba(15,23,42,.12); }
+
+    /* Sticky action bar */
+    .actions { position: sticky; bottom: 0; z-index: 1000; margin: 0 -16px 16px; padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+      background: color-mix(in srgb, var(--bg) 86%, transparent); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+    .actions .btn { width: 100%; font-size: 1.02rem; min-height: 52px; }
+    @media (min-width: 720px) { .actions { position: static; background: none; backdrop-filter: none; margin: 0 0 16px; padding: 0; } .actions .btn { width: auto; min-width: 240px; } }
+    .banner { border-radius: 12px; padding: 12px 14px; background: var(--no-bg); color: var(--no); margin-bottom: 16px; font-weight: 500; }
+    .stale { margin: 8px 0 0; color: var(--warn); font-weight: 600; font-size: .9rem; }
+
+    /* Results */
+    .route { font-weight: 600; font-size: 1.02rem; word-break: break-word; }
+    .stats { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 16px; }
+    .stat { background: var(--mute-bg); border-radius: 999px; padding: 4px 12px; font-size: .85rem; color: var(--muted); }
+    .summary-grid { display: grid; gap: 10px; grid-template-columns: 1fr; }
+    @media (min-width: 560px) { .summary-grid { grid-template-columns: 1fr 1fr; } }
+    .summary-grid.single { grid-template-columns: 1fr; }
+    .sum { border: 1px solid var(--border); border-radius: 14px; padding: 14px; }
+    .sum h3 { margin: 0 0 6px; font-size: 1rem; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+    .sum p { margin: 4px 0 0; font-size: .88rem; color: var(--muted); }
+
+    .badge { display: inline-flex; align-items: center; gap: 4px; font-size: .78rem; font-weight: 700; padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
+    .b-ok { background: var(--ok-bg); color: var(--ok); }
+    .b-warn { background: var(--warn-bg); color: var(--warn); }
+    .b-no { background: var(--no-bg); color: var(--no); }
+    .b-mute { background: var(--mute-bg); color: var(--muted); }
+
+    #map { height: 300px; border-radius: 14px; overflow: hidden; border: 1px solid var(--border); }
+    @media (min-width: 720px) { #map { height: 380px; } }
+    .pin { background: var(--primary); color: var(--on-primary); border: 2px solid #fff; border-radius: 50%; display: grid !important; place-items: center; font: 700 12px/1 var(--font); box-shadow: 0 2px 6px rgba(0,0,0,.3); }
+
+    .timeline { list-style: none; margin: 0; padding: 0; position: relative; }
+    .tl { position: relative; padding: 0 0 18px 44px; }
+    .tl::before { content: ""; position: absolute; left: 15px; top: 32px; bottom: 0; width: 2px; background: var(--border); }
+    .tl:last-child::before { display: none; }
+    .tl:last-child { padding-bottom: 0; }
+    .tl-dot { position: absolute; left: 0; top: 0; width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; font-size: .85rem; font-weight: 700; background: var(--surface-2); border: 2px solid var(--border); }
+    .tl-stay .tl-dot { background: var(--primary); color: var(--on-primary); border-color: var(--primary); }
+    .tl-title { font-weight: 600; padding-top: 4px; }
+    .tl-sub { color: var(--muted); font-size: .86rem; }
+    .rules { margin-top: 8px; display: grid; gap: 6px; }
+    .rule { display: grid; grid-template-columns: 74px 1fr; gap: 4px 10px; align-items: start; background: var(--surface-2); border-radius: 10px; padding: 8px 10px; }
+    .rule-m { font-weight: 700; font-size: .85rem; padding-top: 2px; }
+    .rule-badges { display: flex; flex-wrap: wrap; gap: 6px; }
+    .rule-why { grid-column: 2; font-size: .82rem; color: var(--muted); }
+    @media (min-width: 720px) { .rule { grid-template-columns: 90px auto 1fr; align-items: center; } .rule-why { grid-column: 3; text-align: right; } }
+
+    /* Niyyah */
+    .niat-controls { display: grid; gap: 12px; margin-bottom: 16px; }
+    @media (min-width: 720px) { .niat-controls { grid-template-columns: 1fr 1fr auto; align-items: end; } }
+    .check { display: flex; align-items: center; gap: 8px; font-weight: 500; min-height: 42px; cursor: pointer; }
+    .check input { width: 20px; height: 20px; accent-color: var(--primary); }
+    .niat-step { border: 1px solid var(--border); border-radius: 14px; padding: 14px; margin-bottom: 10px; }
+    .niat-when { font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--primary); margin-bottom: 8px; }
+    .ar { font-family: var(--arabic); font-size: clamp(1.25rem, 1.1rem + .8vw, 1.6rem); line-height: 2; text-align: right; direction: rtl; }
+    .en { color: var(--muted); font-size: .92rem; margin-top: 6px; }
+    .say { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+    .conds { margin: 8px 0 0; padding-left: 20px; color: var(--muted); font-size: .9rem; }
+    .conds li { margin-bottom: 4px; }
+
+    details.notes summary { cursor: pointer; font-weight: 600; list-style: none; display: flex; justify-content: space-between; align-items: center; min-height: 32px; }
+    details.notes summary::-webkit-details-marker { display: none; }
+    details.notes summary::after { content: "+"; font-size: 1.3rem; color: var(--muted); }
+    details.notes[open] summary::after { content: "−"; }
+    .notes ul { padding-left: 20px; margin: 12px 0 0; }
+    .notes li { margin-bottom: 8px; font-size: .92rem; }
+    footer { color: var(--muted); font-size: .82rem; text-align: center; margin-top: 24px; }
+    .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+    #selftest { white-space: pre-wrap; font: 12px/1.5 ui-monospace, monospace; }
+    @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>Musafir Multi-Leg Prayer Eligibility Checker</h1>
-    <p>
-      Enter your journey details below. Start with your home location and add travel legs – each leg includes a destination, travel duration, and stay duration.
-      If you plan to return home at the end, check the option below. For each leg, a contextual narrative is provided to help you understand your travel status and what actions to take.
-    </p>
-    
-    <!-- Starting Location with Autocomplete -->
-    <label for="startingLocation">Starting Location:</label>
-    <input type="text" id="startingLocation" list="locationSuggestions" placeholder="e.g. Singapore" required>
-    <datalist id="locationSuggestions"></datalist>
-    
-    <!-- Global Return Home Option -->
-    <label>
-      <input type="checkbox" id="returnHome"> I plan to return to my starting location at the end of the journey.
-    </label>
-    
-    <!-- Travel Legs Table -->
-    <table id="legsTable">
-      <thead>
-        <tr>
-          <th>From Country</th>
-          <th>Destination Country</th>
-          <th>Destination Full Address</th>
-          <th>Travel Duration (days)</th>
-          <th>Stay Duration (days)</th>
-          <th>Action</th>
-        </tr>
-      </thead>
-      <tbody id="legsTbody">
-        <tr class="placeholder-row">
-          <td colspan="6">Click here to add a travel leg</td>
-        </tr>
-      </tbody>
-    </table>
-    
-    <!-- Calculate Eligibility Button -->
-    <button type="button" id="calculateBtn">Calculate Eligibility</button>
-    
-    <!-- Map Container -->
-    <div id="map"></div>
-    
-    <!-- Niat Section (hidden until after eligibility calculation) -->
-    <div id="niatSection" class="niat-section">
-      <h2>Niat (Intention) for Prayer</h2>
-      <label for="prayerSelect">Select your first prayer:</label>
-      <select id="prayerSelect">
-        <option value="Zuhr">Zuhr (ٱلظُّهْرِ)</option>
-        <option value="Asr">Asr (ٱلْعَصْرِ)</option>
-        <option value="Maghrib">Maghrib (ٱلْمَغْرِبِ)</option>
-        <option value="Isha">Isha (ٱلْعِشَاء)</option>
-      </select>
-      <button type="button" id="generateNiatBtn">Generate Niat</button>
-      <!-- Two audio buttons for Arabic and English, and a Stop Audio button -->
-      <button type="button" id="playArabicBtn" title="Play Arabic">🔊 Arabic</button>
-      <button type="button" id="playEnglishBtn" title="Play English">🔊 English</button>
-      <button type="button" id="stopAudioBtn" title="Stop Audio">⏹ Stop</button>
-      <div id="niatResult" style="font-size: 1.5em; margin-top: 10px;"></div>
+  <main class="wrap">
+    <header>
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M14.5 2.5a9.5 9.5 0 1 0 7 15.9A8 8 0 1 1 14.5 2.5Z"/></svg>
+        </div>
+        <h1>Musafir Guidance</h1>
+      </div>
+      <p class="lede">Plan your trip and see where you may shorten (<em>qasr</em>) and combine (<em>jamʿ</em>) prayers, according to each of the four madhhabs.</p>
+    </header>
+
+    <div id="banner" class="banner" role="alert" hidden></div>
+
+    <form id="journeyForm" novalidate>
+      <section class="card" aria-labelledby="madhhabTitle">
+        <div class="step-label">Preferences</div>
+        <h2 id="madhhabTitle">Show rulings for</h2>
+        <p class="card-sub">Pick your madhhab to keep things simple, or compare all four.</p>
+        <fieldset class="seg" id="madhhabSeg">
+          <legend>Madhhab</legend>
+          <label><input type="radio" name="madhhab" value="all">All four</label>
+          <label><input type="radio" name="madhhab" value="hanafi">Hanafi</label>
+          <label><input type="radio" name="madhhab" value="maliki">Maliki</label>
+          <label><input type="radio" name="madhhab" value="shafii">Shafiʿi</label>
+          <label><input type="radio" name="madhhab" value="hanbali">Hanbali</label>
+        </fieldset>
+      </section>
+
+      <section class="card" aria-labelledby="homeTitle">
+        <div class="step-label">Step 1</div>
+        <h2 id="homeTitle">Where do you live?</h2>
+        <p class="card-sub">Your home town: where you normally pray in full.</p>
+        <div class="field" id="homeField">
+          <label for="homeInput">Home town or city</label>
+          <div class="ac">
+            <input type="text" id="homeInput" placeholder="Start typing, e.g. Singapore" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="homeList" aria-describedby="homeResolved homeErr">
+            <ul id="homeList" class="ac-list" role="listbox" hidden></ul>
+          </div>
+          <p class="hint resolved" id="homeResolved"></p>
+          <p class="err" id="homeErr"></p>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="stopsTitle">
+        <div class="step-label">Step 2</div>
+        <h2 id="stopsTitle">Where are you going?</h2>
+        <p class="card-sub">Add each place you'll stay, in order, with the dates you arrive and leave.</p>
+        <div id="stops" class="stops"></div>
+        <button type="button" class="btn btn-ghost" id="addStop">＋ Add another stop</button>
+        <label class="toggle" for="returnHome">
+          <span>I'll return home at the end</span>
+          <input type="checkbox" id="returnHome">
+          <span class="switch" aria-hidden="true"></span>
+        </label>
+      </section>
+
+      <div class="actions">
+        <button type="submit" class="btn btn-primary" id="checkBtn">Check my journey</button>
+        <p class="stale" id="staleNote" role="status" hidden>Out of date — your trip changed. Check again to update the results.</p>
+      </div>
+    </form>
+
+    <div id="results" hidden aria-live="polite">
+      <section class="card" aria-labelledby="sumTitle">
+        <div class="step-label">Your journey</div>
+        <h2 id="sumTitle" class="sr-only">Summary</h2>
+        <div class="route" id="routeLine"></div>
+        <div class="stats" id="routeStats"></div>
+        <div class="summary-grid" id="summaryGrid"></div>
+      </section>
+
+      <section class="card" id="mapCard" aria-label="Route map">
+        <div id="map" role="img" aria-label="Map of your route"></div>
+        <p class="hint">Distances are measured in a straight line. Road or rail distance is usually longer.</p>
+      </section>
+
+      <section class="card" aria-labelledby="tlTitle">
+        <h2 id="tlTitle">Step by step</h2>
+        <p class="card-sub">What applies on each part of the trip.</p>
+        <ol class="timeline" id="timeline"></ol>
+      </section>
+
+      <section class="card" id="niatCard" aria-labelledby="niatTitle">
+        <h2 id="niatTitle">Intention (niyyah) for combining</h2>
+        <p class="card-sub">The intention is made in the heart; saying it aloud is optional. The wording below follows common Shafiʿi practice.</p>
+        <div id="niatBody">
+          <div class="niat-controls">
+            <fieldset class="seg">
+              <legend>Prayers</legend>
+              <label><input type="radio" name="pair" value="zuhr" checked>Zuhr + Asr</label>
+              <label><input type="radio" name="pair" value="maghrib">Maghrib + Isha</label>
+            </fieldset>
+            <fieldset class="seg">
+              <legend>When</legend>
+              <label><input type="radio" name="mode" value="taqdim" checked>Early (taqdim)</label>
+              <label><input type="radio" name="mode" value="takhir">Late (taʾkhir)</label>
+            </fieldset>
+            <label class="check"><input type="checkbox" id="qasrChk" checked>Shorten (qasr)</label>
+          </div>
+          <div id="niatOut"></div>
+        </div>
+        <p class="hint" id="niatNote"></p>
+      </section>
     </div>
-    
-    <!-- Results Section (initially hidden) -->
-    <div id="resultsSection" class="results-section">
-      <h2>Journey Leg Eligibility Overview</h2>
-      <div id="legsResults"></div>
-      
-      <h2>Madhhab Summary (Basic Guideline)</h2>
-      <div class="madhhab-mini-cards" id="madhhabCards"></div>
-    </div>
-  </div>
-  
-  <!-- Loading Modal for Calculation -->
-  <div id="loadingModal" class="modal">
-    <div class="modal-content loading-modal-content">
-      <h2>Checking your route...</h2>
-      <div class="loading-animation" id="animIcon"></div>
-    </div>
-  </div>
-  
-  <!-- Modal for Detailed Madhhab Explanation -->
-  <div id="modal" class="modal">
-    <div class="modal-content">
-      <span class="close-modal">&times;</span>
-      <div id="modalBody"></div>
-    </div>
-  </div>
-  
-  <!-- Leaflet JS Library -->
-  <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+
+    <section class="card">
+      <details class="notes">
+        <summary>How this works &amp; key rules</summary>
+        <ul>
+          <li><strong>Distance.</strong> A journey qualifies at roughly 81 km (48 Hashimi miles) for the Maliki, Shafiʿi and Hanbali schools, and about 77 km in the common Hanafi estimate. Scholars give estimates from about 77 to 89 km. This app uses straight-line distance, which is never longer than the real route. So a leg marked <em>borderline</em> may still qualify by road.</li>
+          <li><strong>When it starts and ends.</strong> Concessions begin once you leave your town's built-up area and end when you arrive back home.</li>
+          <li><strong>Becoming a resident.</strong> If you intend to stay in one place long enough, you pray in full there. That means 15 nights or more (Hanafi), 4 full days or more not counting the days you arrive and leave (Maliki, Shafiʿi), or more than 4 nights (Hanbali, often counted as more than 20 prayers; exactly 4 nights is shown as borderline because it depends on when you arrive and leave). When you leave that place, a new journey begins and has to meet the distance again.</li>
+          <li><strong>Several stops.</strong> While you are still a traveller, short hops between stops stay part of the same journey. The journey is judged by the farthest point you reach from where it began (in a straight line), not by adding up the hops. If the hops add up to more than the distance, the app flags that the road distance may qualify; ask a scholar about your case.</li>
+          <li><strong>Qasr</strong> shortens only the 4-rakʿah prayers (Zuhr, Asr, Isha) to 2. Fajr and Maghrib never change. If you pray behind a resident imam, pray in full with him.</li>
+          <li><strong>Jamʿ (combining)</strong> joins Zuhr with Asr, or Maghrib with Isha. Hanafis don't allow it, except at ʿArafah and Muzdalifah during Hajj. Malikis allow it while you are actually on the road. Shafiʿis and Hanbalis allow it for as long as you are a traveller.</li>
+          <li>This is general guidance based on the main positions of each school. For your own situation, please ask a qualified scholar.</li>
+        </ul>
+      </details>
+    </section>
+
+    <pre id="selftest" class="card" hidden></pre>
+    <footer>Place search © OpenStreetMap contributors (Photon / Nominatim). Map tiles © CARTO.</footer>
+  </main>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
   <script>
-    (function() {
-      // Store available voices
-      let availableVoices = [];
-      function loadVoices() {
-        availableVoices = speechSynthesis.getVoices();
-      }
-      window.speechSynthesis.onvoiceschanged = loadVoices;
-      
-      // Debounce function.
-      function debounce(func, wait) {
-        let timeout;
-        return function(...args) {
-          clearTimeout(timeout);
-          timeout = setTimeout(() => func.apply(this, args), wait);
-        };
-      }
-      
-      // Helper: Extract country from a display_name (assumes last comma-separated value).
-      function extractCountry(displayName) {
-        const parts = displayName.split(",");
-        return parts[parts.length - 1].trim();
-      }
-      
-      // Minimal geocode function using Nominatim API.
-      async function geocodeAddress(address) {
-        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`;
-        const response = await fetch(url);
-        const data = await response.json();
-        if (data && data.length > 0) {
-          return {
-            lat: parseFloat(data[0].lat),
-            lon: parseFloat(data[0].lon),
-            display_name: data[0].display_name
-          };
+  (() => {
+    'use strict';
+
+    /* ---------- Helpers ---------- */
+    const $ = (s, r = document) => r.querySelector(s);
+    const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+    const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
+    const uid = () => Math.random().toString(36).slice(2, 9);
+    const fmtKm = km => km < 10 ? km.toFixed(1) : Math.round(km).toLocaleString();
+    const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+
+    function todayISO() {
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+    function parseDate(v) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(v || '')) return null;
+      const [y, m, d] = v.split('-').map(Number);
+      return Date.UTC(y, m - 1, d);
+    }
+    function nightsBetween(a, b) {
+      const A = parseDate(a), B = parseDate(b);
+      if (A == null || B == null) return null;
+      return Math.round((B - A) / 86400000);
+    }
+    function addDays(v, n) {
+      const t = parseDate(v); if (t == null) return '';
+      return new Date(t + n * 86400000).toISOString().slice(0, 10);
+    }
+    function fmtDate(v) {
+      const t = parseDate(v); if (t == null) return '';
+      return new Date(t).toLocaleDateString(undefined, { day: 'numeric', month: 'short', timeZone: 'UTC' });
+    }
+    function haversineKm(a, b) {
+      const R = 6371.0088, rad = x => x * Math.PI / 180;
+      const dLat = rad(b.lat - a.lat), dLon = rad(b.lon - a.lon);
+      const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLon / 2) ** 2;
+      return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
+    }
+
+    /* ---------- Fiqh model ----------
+       nights = number of nights at a stop (leave date minus arrival date).
+       Full days excluding the arrival and departure days = nights - 1. */
+    const MADHHABS = [
+      { id: 'hanafi', name: 'Hanafi', minKm: 77, residentIf: n => n >= 15, residentShort: '15+ nights',
+        qasr: 'Qasr is obligatory for the traveller.', jam: 'no',
+        jamText: 'Combining is not permitted (except at ʿArafah and Muzdalifah in Hajj).' },
+      { id: 'maliki', name: 'Maliki', minKm: 81, residentIf: n => Math.max(0, n - 1) >= 4, residentShort: '4+ full days',
+        qasr: 'Qasr is a stressed sunnah.', jam: 'road',
+        jamText: 'Combining is permitted while actually on the road, not during a stay.' },
+      { id: 'shafii', name: 'Shafiʿi', minKm: 81, residentIf: n => Math.max(0, n - 1) >= 4, residentShort: '4+ full days',
+        qasr: 'Qasr is permitted, and better on long journeys.', jam: 'yes',
+        jamText: 'Combining (taqdim or taʾkhir) is permitted while you remain a traveller.' },
+      { id: 'hanbali', name: 'Hanbali', minKm: 81, residentIf: n => n > 4, borderlineStay: n => n === 4, residentShort: 'more than 4 nights',
+        qasr: 'Qasr is preferred.', jam: 'yes',
+        jamText: 'Combining is permitted; when settled at a stop it is better to pray each on time.' }
+    ];
+
+    /* Evaluate the whole trip for one madhhab.
+       pts[i] = point i {lat, lon} (0 = home, 1..n = stops, n+1 = home again if returning).
+       A "journey" runs from a place where you are resident (home or a long stay) to the next such place.
+       A journey is judged by the farthest straight-line point it reaches from where it began, so zig-zag
+       hops are never added up. The summed hops (pathKm) are kept only as a "road distance may qualify" hint;
+       for out-and-back journeys pathKm is the longer half, never the sum of both. */
+    function evaluateJourney(pts, nights, returnsHome, m) {
+      const n = nights.length;
+      const last = returnsHome ? n + 1 : n;
+      const dist = (i, j) => haversineKm(pts[i], pts[j]);
+      const residentPoint = idx => idx === 0 || idx === n + 1 || m.residentIf(nights[idx - 1]);
+      const stayBorderline = k => !!(m.borderlineStay && m.borderlineStay(nights[k]));
+      const legs = new Array(last), stays = new Array(n);
+      let s = 0;
+      while (s < last) {
+        let e = s + 1;
+        while (e < last && !residentPoint(e)) e++;
+        let km = 0, sum = 0;
+        for (let j = s + 1; j <= e; j++) km = Math.max(km, dist(s, j));
+        for (let i = s; i < e; i++) sum += dist(i, i + 1);
+        let pathKm = sum;
+        if (returnsHome && e === n + 1) {
+          const back = dist(e - 1, e);
+          pathKm = Math.max(sum - back, back);
         }
-        throw new Error("Address not found");
+        const traveller = km >= m.minKm;
+        const borderline = !traveller && (km >= m.minKm * 0.7 || pathKm >= m.minKm);
+        for (let i = s; i < e; i++) legs[i] = { traveller, km, pathKm, borderline };
+        for (let k = s + 1; k <= Math.min(e, n); k++) {
+          if (k === e && m.residentIf(nights[k - 1])) stays[k - 1] = { traveller: false, byLength: true, km, pathKm, borderline: false, stayBorderline: false };
+          else stays[k - 1] = { traveller, byLength: false, km, pathKm, borderline, stayBorderline: stayBorderline(k - 1) };
+        }
+        s = e;
       }
-      
-      // Haversine formula for distance calculation.
-      function calculateDistance(coord1, coord2) {
-        const R = 6371;
-        const lat1 = coord1.lat * Math.PI / 180;
-        const lat2 = coord2.lat * Math.PI / 180;
-        const deltaLat = (coord2.lat - coord1.lat) * Math.PI / 180;
-        const deltaLon = (coord2.lon - coord1.lon) * Math.PI / 180;
-        const a = Math.sin(deltaLat/2) ** 2 +
-                  Math.cos(lat1) * Math.cos(lat2) *
-                  Math.sin(deltaLon/2) ** 2;
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        return R * c;
-      }
-      
-      // Determine eligibility based on distance and intended stay.
-      function determineEligibility(distance, stayDuration) {
-        const minDistance = 80;
-        const qualifiesDistance = distance >= minDistance;
-        return {
-          qualifiesDistance,
-          hanafi: stayDuration < 15,
-          maliki: stayDuration < 4,
-          shafii: stayDuration < 4,
-          hanbali: stayDuration < 4
-        };
-      }
-      
-      let startingCountry = "Unknown";
-      let legCount = 0;
-      let map, markers = [], polyline;
-      const markerColors = ["red", "blue", "green", "orange", "purple", "yellow"];
-      
-      // Mapping for Arabic prayer names.
-      const arabicNames = {
-        "Zuhr": "ٱلظُّهْرِ",
-        "Asr": "ٱلْعَصْرِ",
-        "Maghrib": "ٱلْمَغْرِبِ",
-        "Isha": "ٱلْعِشَاء"
+      return { legs, stays };
+    }
+
+    /* ---------- Geocoding ---------- */
+    function toPlace(f) {
+      const p = f.properties || {};
+      const [lon, lat] = f.geometry.coordinates;
+      const name = p.name || p.city || p.state || p.country || 'Unknown place';
+      const parts = [name];
+      [p.city, p.state, p.country].forEach(x => { if (x && !parts.includes(x)) parts.push(x); });
+      return { name, label: parts.join(', '), country: p.country || '', lat, lon };
+    }
+    async function searchPlaces(q, signal) {
+      const r = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=6&lang=en`, { signal });
+      if (!r.ok) throw new Error('search ' + r.status);
+      const j = await r.json();
+      return (j.features || []).filter(f => f.geometry && Array.isArray(f.geometry.coordinates)).map(toPlace);
+    }
+    async function geocodeOne(q) {
+      try { const r = await searchPlaces(q); if (r.length) return r[0]; } catch (e) { /* fall back */ }
+      const r = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&addressdetails=1&accept-language=en&q=${encodeURIComponent(q)}`);
+      if (!r.ok) throw new Error('geocode ' + r.status);
+      const j = await r.json();
+      if (!j.length) return null;
+      const x = j[0], a = x.address || {};
+      return { name: x.name || q, label: x.display_name, country: a.country || '', lat: +x.lat, lon: +x.lon };
+    }
+    /* All places matching typed text (Photon first; geocodeOne falls back to Nominatim). */
+    async function geocodeCandidates(q) {
+      let found = [];
+      try { found = await searchPlaces(q); } catch (e) { /* fall back */ }
+      if (!found.length) { const one = await geocodeOne(q); found = one ? [one] : []; }
+      const seen = new Set();
+      return found.filter(p => Number.isFinite(p.lat) && Number.isFinite(p.lon) && !seen.has(p.label) && seen.add(p.label));
+    }
+
+    function attachAutocomplete(input, list, { onType, onPick }) {
+      let items = [], active = -1, ctrl = null;
+      const close = () => { list.hidden = true; input.setAttribute('aria-expanded', 'false'); input.removeAttribute('aria-activedescendant'); active = -1; };
+      const render = () => {
+        list.innerHTML = items.map((p, i) => `<li role="option" id="${list.id}-o${i}" data-i="${i}" aria-selected="${i === active}"><span class="ac-name">${esc(p.name)}</span><span class="ac-sub">${esc(p.label)}</span></li>`).join('');
+        list.hidden = !items.length;
+        input.setAttribute('aria-expanded', String(!!items.length));
+        if (active >= 0) input.setAttribute('aria-activedescendant', `${list.id}-o${active}`); else input.removeAttribute('aria-activedescendant');
       };
-      
-      // Update starting location's country on blur.
-      document.getElementById('startingLocation').addEventListener('blur', async function(e) {
-        if(e.target.value.trim() !== "") {
-          try {
-            let data = await geocodeAddress(e.target.value);
-            startingCountry = extractCountry(data.display_name);
-            const firstLeg = document.querySelector('#legsTbody tr:not(.placeholder-row)');
-            if(firstLeg) {
-              firstLeg.cells[0].innerText = startingCountry;
-            }
-          } catch(err) {
-            console.error("Error updating starting country:", err);
-          }
-        }
-      });
-      
-      // Function to add a new travel leg row.
-      function addLegRow() {
-        const tbody = document.getElementById('legsTbody');
-        const placeholder = document.querySelector('.placeholder-row');
-        if(placeholder) placeholder.remove();
-        const row = document.createElement('tr');
-        const currentIndex = document.querySelectorAll('#legsTbody tr').length + 1;
-        row.setAttribute('data-index', currentIndex);
-        row.innerHTML = `
-          <td id="fromCountry-${currentIndex}">--</td>
-          <td><input type="text" class="destination-input" list="locationSuggestions" placeholder="Enter destination" required></td>
-          <td class="destination-full-address"></td>
-          <td><input type="number" class="travel-duration-input" min="1" placeholder="Days" required></td>
-          <td><input type="number" class="stay-duration-input" min="0" placeholder="Days" required></td>
-          <td><button type="button" class="remove-btn">Remove</button></td>
-        `;
-        tbody.appendChild(row);
-        const newPlaceholder = document.createElement('tr');
-        newPlaceholder.className = 'placeholder-row';
-        newPlaceholder.innerHTML = `<td colspan="6">Click here to add a travel leg</td>`;
-        newPlaceholder.addEventListener('click', addLegRow);
-        tbody.appendChild(newPlaceholder);
-        updateFromCountries();
-      }
-      
-      // Add event listener to the initial placeholder row.
-      document.querySelector('.placeholder-row').addEventListener('click', addLegRow);
-      
-      // Event delegation for remove buttons.
-      document.getElementById('legsTable').addEventListener('click', function(e) {
-        if(e.target && e.target.classList.contains('remove-btn')) {
-          e.target.closest('tr').remove();
-          updateFromCountries();
-        }
-      });
-      
-      // Function to update the "From Country" column for all rows.
-      function updateFromCountries() {
-        const rows = document.querySelectorAll('#legsTbody tr:not(.placeholder-row)');
-        if(rows.length === 0) return;
-        rows[0].cells[0].innerText = startingCountry;
-        for(let i = 1; i < rows.length; i++) {
-          const prevRow = rows[i - 1];
-          const fullAddressCell = prevRow.querySelector('.destination-full-address');
-          if(fullAddressCell && fullAddressCell.innerText.trim() !== "") {
-            rows[i].cells[0].innerText = extractCountry(fullAddressCell.innerText);
-          }
-        }
-      }
-      
-      // Debounced function to update destination full address on blur.
-      const debouncedUpdateDestination = debounce(async function(input) {
-        if (input.value.trim() !== "") {
-          try {
-            let data = await geocodeAddress(input.value);
-            let row = input.closest('tr');
-            if(!row) return;
-            const fullAddressCell = row.querySelector('.destination-full-address');
-            if(fullAddressCell) {
-              fullAddressCell.innerText = data.display_name;
-            }
-            updateFromCountries();
-          } catch(err) {
-            console.error("Error updating destination country:", err);
-          }
-        }
-      }, 150);
-      
-      // Listen for blur events on destination inputs.
-      document.getElementById('legsTbody').addEventListener('blur', function(e) {
-        if(e.target && e.target.classList.contains('destination-input')) {
-          debouncedUpdateDestination(e.target);
-        }
-      }, true);
-      
-      // Autocomplete suggestions using Nominatim API.
-      async function updateSuggestions(input) {
-        const query = input.value;
-        if (!query || query.length < 3) return;
-        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`;
+      const run = debounce(async q => {
+        if (ctrl) ctrl.abort();
+        ctrl = new AbortController();
         try {
-          const response = await fetch(url);
-          const data = await response.json();
-          const datalist = document.getElementById('locationSuggestions');
-          datalist.innerHTML = "";
-          data.forEach(item => {
-            const option = document.createElement('option');
-            option.value = item.display_name;
-            datalist.appendChild(option);
-          });
-        } catch (error) {
-          console.error("Autocomplete error:", error);
-        }
+          items = await searchPlaces(q, ctrl.signal);
+          active = -1;
+          if (document.activeElement === input && input.value.trim() === q) render();
+        } catch (e) { if (e.name !== 'AbortError') { items = []; close(); } }
+      }, 250);
+      function pick(i) {
+        const p = items[i]; if (!p) return;
+        input.value = p.label;
+        items = []; close();
+        onPick(p);
       }
-      
-      const debouncedUpdateSuggestions = debounce(updateSuggestions, 150);
-      
-      document.getElementById('startingLocation').addEventListener('input', function() {
-        debouncedUpdateSuggestions(this);
+      input.addEventListener('input', () => {
+        onType(input.value);
+        const q = input.value.trim();
+        if (q.length < 3) { items = []; close(); return; }
+        run(q);
       });
-      document.getElementById('legsTbody').addEventListener('input', function(e) {
-        if(e.target && e.target.classList.contains('destination-input')) {
-          debouncedUpdateSuggestions(e.target);
-        }
+      input.addEventListener('keydown', e => {
+        if (list.hidden || !items.length) return;
+        if (e.key === 'ArrowDown') { e.preventDefault(); active = (active + 1) % items.length; render(); }
+        else if (e.key === 'ArrowUp') { e.preventDefault(); active = (active - 1 + items.length) % items.length; render(); }
+        else if (e.key === 'Enter') { e.preventDefault(); pick(active >= 0 ? active : 0); }
+        else if (e.key === 'Escape') { close(); }
       });
-      
-      // ---------------------------
-      // Generate Niat Functionality
-      // ---------------------------
-      document.getElementById('generateNiatBtn').addEventListener('click', function() {
-        const selectedPrayer = document.getElementById('prayerSelect').value;
-        let matchingPrayer = "";
-        let jamaaDecision = "";
-        let jamaaDecisionArabic = "";
-        
-        if (selectedPrayer === "Zuhr") {
-          matchingPrayer = "Asr";
-          jamaaDecision = "Jamaa Takhir (delaying)";
-          jamaaDecisionArabic = "جَمَاعَةُ تَأْخِيرٍ";
-        } else if (selectedPrayer === "Asr") {
-          matchingPrayer = "Zuhr";
-          jamaaDecision = "Jamaa Takdim (advancing)";
-          jamaaDecisionArabic = "جَمَاعَةُ تَقْدِيمٍ";
-        } else if (selectedPrayer === "Maghrib") {
-          matchingPrayer = "Isha";
-          jamaaDecision = "Jamaa Takhir (delaying)";
-          jamaaDecisionArabic = "جَمَاعَةُ تَأْخِيرٍ";
-        } else if (selectedPrayer === "Isha") {
-          matchingPrayer = "Maghrib";
-          jamaaDecision = "Jamaa Takdim (advancing)";
-          jamaaDecisionArabic = "جَمَاعَةُ تَقْدِيمٍ";
-        }
-        
-        const arabicNiat = `نَوَيْتُ أَنْ أُصَلِّيَ صَلَاةَ ${arabicNames[selectedPrayer]} بِقَصْرٍ، وَ${jamaaDecisionArabic} صَلَاةَ ${arabicNames[matchingPrayer]}.`;
-        const englishNiat = `I intend to pray ${selectedPrayer} with Qasr (shortened prayer) and ${jamaaDecision} the ${matchingPrayer} prayer.`;
-        
-        document.getElementById('niatResult').innerHTML = `<div style="text-align:center; margin-bottom:10px;">${arabicNiat}</div><div style="font-size:0.8em; text-align:center; color:#555;">${englishNiat}</div>`;
-        document.getElementById('niatResult').setAttribute('data-arabic', arabicNiat);
-        document.getElementById('niatResult').setAttribute('data-english', englishNiat);
+      list.addEventListener('mousedown', e => e.preventDefault());
+      list.addEventListener('click', e => { const li = e.target.closest('li'); if (li) pick(+li.dataset.i); });
+      input.addEventListener('blur', () => setTimeout(close, 150));
+      input.addEventListener('focus', () => { if (items.length) render(); });
+      return { show(found) { items = found; active = -1; if (document.activeElement === input) render(); } };
+    }
+
+    /* ---------- State ---------- */
+    const KEY = 'musafir-guidance-v2';
+    const newStop = prevDepart => ({ id: uid(), query: '', place: null, arrive: prevDepart || todayISO(), depart: addDays(prevDepart || todayISO(), 3) });
+    const MADHHAB_IDS = ['all', ...MADHHABS.map(m => m.id)];
+    const str = v => typeof v === 'string' ? v : '';
+    function cleanPlace(p) {
+      if (!p || typeof p !== 'object') return null;
+      const lat = Number(p.lat), lon = Number(p.lon);
+      if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) return null;
+      const name = str(p.name) || str(p.label) || 'Unknown place';
+      return { name, label: str(p.label) || name, country: str(p.country), lat, lon };
+    }
+    /* Saved data is untrusted: keep only known madhhab ids, fill missing fields, replace unsafe stop ids. */
+    function sanitize(s) {
+      if (!s || typeof s !== 'object' || !Array.isArray(s.stops)) return null;
+      const seen = new Set();
+      const stops = s.stops.filter(x => x && typeof x === 'object').map(x => {
+        let id = str(x.id);
+        if (!/^[a-z0-9]{1,16}$/i.test(id) || seen.has(id)) id = uid();
+        seen.add(id);
+        const place = cleanPlace(x.place);
+        const arrive = parseDate(x.arrive) != null ? x.arrive : todayISO();
+        const depart = parseDate(x.depart) != null ? x.depart : addDays(arrive, 3);
+        return { id, query: str(x.query) || (place ? place.label : ''), place, arrive, depart };
       });
-      
-      // Audio functionality for Arabic niat.
-      document.getElementById('playArabicBtn').addEventListener('click', function() {
-        const arabicText = document.getElementById('niatResult').getAttribute('data-arabic') || "";
-        if(arabicText.trim() !== "") {
-          const utterance = new SpeechSynthesisUtterance(arabicText);
-          const arabicVoice = availableVoices.find(voice => voice.lang.startsWith("ar"));
-          if(arabicVoice) {
-            utterance.voice = arabicVoice;
-          }
-          utterance.lang = 'ar-SA';
-          speechSynthesis.speak(utterance);
-        }
-      });
-      
-      // Audio functionality for English niat.
-      document.getElementById('playEnglishBtn').addEventListener('click', function() {
-        const englishText = document.getElementById('niatResult').getAttribute('data-english') || "";
-        if(englishText.trim() !== "") {
-          const utterance = new SpeechSynthesisUtterance(englishText);
-          const englishVoice = availableVoices.find(voice => voice.lang.startsWith("en"));
-          if(englishVoice) {
-            utterance.voice = englishVoice;
-          }
-          // Adjust for more natural speech
-          utterance.rate = 1.0;
-          utterance.pitch = 1.0;
-          utterance.lang = 'en-US';
-          speechSynthesis.speak(utterance);
-        }
-      });
-      
-      // Stop Audio Button functionality.
-      document.getElementById('stopAudioBtn').addEventListener('click', function() {
-        speechSynthesis.cancel();
-      });
-      
-      // ---------------------------
-      // Generate Leg Narrative Functionality
-      // ---------------------------
-      async function generateResults(legsData, isReturningHome, startingCountryParam) {
-        let legsResultsHTML = `<table class="leg-result-table">
-          <thead>
-            <tr>
-              <th>From Country</th>
-              <th>Destination Country</th>
-              <th>Destination Full Address</th>
-              <th>Travel Duration (days)</th>
-              <th>Stay Duration (days)</th>
-              <th>Narrative</th>
-            </tr>
-          </thead>
-          <tbody>`;
-      
-        legsData.forEach((leg, i) => {
-          let fromCountry = i === 0 ? startingCountryParam : extractCountry(legsData[i-1].destination.display_name);
-          let destCountry = leg.destination.display_name ? extractCountry(leg.destination.display_name) : "Unknown";
-          let narrative = "";
-          const elig = determineEligibility(leg.distance, leg.stayDuration);
-          
-          if (leg.leg === "Return Home") {
-            narrative = `<p>Since you are travelling back to <strong>${destCountry}</strong>, the following rules apply during your travel phase:</p>
-            <ul>
-              <li><strong>Hanafi:</strong> Qasr is permitted (2 rak‘ahs) during travel up to 15 days; combining is not permitted.</li>
-              <li><strong>Maliki:</strong> Qasr is permitted if the stay is under 4 days; combining is not permitted.</li>
-              <li><strong>Shafi‘i:</strong> Qasr is permitted if the stay is under 4 days; combining is permitted (using either Jamaa Takhir or Jamaa Takdim).</li>
-              <li><strong>Hanbali:</strong> Qasr is permitted if the stay is under 4 days; combining is permitted (with Jamaa Takdim generally preferred, though Jamaa Takhir is acceptable).</li>
-            </ul>`;
-          } else if (!elig.qualifiesDistance) {
-            narrative = `<em>This leg does not qualify for travel concessions because the distance is less than 80 km. Please pray as a resident.</em>`;
-          } else {
-            narrative = `<p>You have traveled <strong>${leg.distance.toFixed(2)} km</strong> from <strong>${fromCountry}</strong> to <strong>${destCountry}</strong>, meeting the minimum requirement for travel concessions.</p>`;
-            narrative += `<p>Based on your stay of <strong>${leg.stayDuration} day(s)</strong> at ${destCountry}, the following guidelines apply during your travel phase:</p>`;
-            narrative += `<ul>`;
-            if (leg.stayDuration < 15) {
-              narrative += `<li><strong>Hanafi:</strong> Qualifies for Qasr (2 rak‘ahs instead of 4); combining is not permitted.</li>`;
-            } else {
-              narrative += `<li><strong>Hanafi:</strong> Exceeds the 15-day limit; full (resident) prayer is required.</li>`;
-            }
-            if (leg.stayDuration < 4) {
-              narrative += `<li><strong>Maliki:</strong> Qualifies for Qasr as the stay is under 4 days; combining is not permitted.</li>`;
-            } else {
-              narrative += `<li><strong>Maliki:</strong> Exceeds the 4-day limit; full prayer obligations apply.</li>`;
-            }
-            if (leg.stayDuration < 4) {
-              narrative += `<li><strong>Shafi‘i:</strong> Qualifies for Qasr and allows combining. You may choose either Jamaa Takhir (delaying) or Jamaa Takdim (advancing).</li>`;
-            } else {
-              narrative += `<li><strong>Shafi‘i:</strong> Exceeds the 4-day limit; full (resident) prayer is required.</li>`;
-            }
-            if (leg.stayDuration < 4) {
-              narrative += `<li><strong>Hanbali:</strong> Qualifies for Qasr and allows combining. The preferred method is Jamaa Takdim (advancing), though Jamaa Takhir (delaying) is also acceptable.</li>`;
-            } else {
-              narrative += `<li><strong>Hanbali:</strong> Exceeds the 4-day limit; full prayer is required.</li>`;
-            }
-            narrative += `</ul>`;
-          }
-          legsResultsHTML += `<tr>
-            <td>${fromCountry}</td>
-            <td>${destCountry}</td>
-            <td class="destination-full-address-cell">${leg.destination.display_name}</td>
-            <td>${leg.travelDuration}</td>
-            <td>${leg.stayDuration}</td>
-            <td>${narrative}</td>
-          </tr>`;
+      if (!stops.length) return null;
+      const h = s.home && typeof s.home === 'object' ? s.home : {};
+      const homePlace = cleanPlace(h.place);
+      return {
+        madhhab: MADHHAB_IDS.includes(s.madhhab) ? s.madhhab : 'all',
+        home: { query: str(h.query) || (homePlace ? homePlace.label : ''), place: homePlace },
+        stops,
+        returnsHome: typeof s.returnsHome === 'boolean' ? s.returnsHome : true
+      };
+    }
+    function load() {
+      try { return sanitize(JSON.parse(localStorage.getItem(KEY))); } catch (e) { return null; }
+    }
+    let state = load() || { madhhab: 'all', home: { query: '', place: null }, stops: [newStop()], returnsHome: true };
+    let lastResult = null;
+    const save = debounce(() => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* ignore */ } }, 300);
+    const visibleMadhhabs = () => state.madhhab === 'all' ? MADHHABS : MADHHABS.filter(m => m.id === state.madhhab);
+    const acs = {};
+    let homeAc = null;
+    /* Any edit to the trip makes on-screen results out of date. */
+    function markStale() {
+      if (!lastResult) return;
+      lastResult = null;
+      $('#results').hidden = true;
+      $('#staleNote').hidden = false;
+    }
+
+    /* ---------- Form rendering ---------- */
+    function stopHTML(stop, i) {
+      const n = i + 1;
+      const s = { ...stop, id: esc(stop.id) };
+      return `<article class="stop" data-id="${s.id}">
+        <div class="stop-head">
+          <span class="stop-num" aria-hidden="true">${n}</span>
+          <h3>Stop ${n}</h3>
+          <button type="button" class="icon-btn remove" aria-label="Remove stop ${n}" ${state.stops.length === 1 ? 'disabled' : ''}>✕</button>
+        </div>
+        <div class="field place">
+          <label for="q-${s.id}">Destination</label>
+          <div class="ac">
+            <input type="text" id="q-${s.id}" value="${esc(s.place ? s.place.label : s.query)}" placeholder="City or town" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="l-${s.id}" aria-describedby="r-${s.id} e-${s.id}">
+            <ul id="l-${s.id}" class="ac-list" role="listbox" hidden></ul>
+          </div>
+          <p class="hint resolved" id="r-${s.id}">${s.place ? esc(s.place.label) : ''}</p>
+          <p class="err" id="e-${s.id}"></p>
+        </div>
+        <div class="grid2">
+          <div class="field arrive"><label for="a-${s.id}">Arrive</label><input type="date" id="a-${s.id}" value="${esc(s.arrive)}"><p class="err"></p></div>
+          <div class="field depart"><label for="d-${s.id}">Leave</label><input type="date" id="d-${s.id}" value="${esc(s.depart)}"><p class="err"></p></div>
+        </div>
+        <p class="hint nights"></p>
+      </article>`;
+    }
+
+    function renderStops() {
+      const wrap = $('#stops');
+      wrap.innerHTML = state.stops.map(stopHTML).join('');
+      state.stops.forEach(s => {
+        const el = wrap.querySelector(`[data-id="${s.id}"]`);
+        const q = $(`#q-${s.id}`, el);
+        acs[s.id] = attachAutocomplete(q, $(`#l-${s.id}`, el), {
+          onType: v => { s.query = v; s.place = null; $(`#r-${s.id}`, el).textContent = ''; clearFieldError(el.querySelector('.place')); save(); markStale(); },
+          onPick: p => { s.place = p; s.query = p.label; $(`#r-${s.id}`, el).textContent = p.label; clearFieldError(el.querySelector('.place')); save(); markStale(); }
         });
-      
-        if (isReturningHome) {
-          legsResultsHTML += `<tr>
-            <td colspan="6" style="text-align:center;">
-              Upon returning home, travel concessions reset and you resume full (resident) prayer practice.
-            </td>
-          </tr>`;
-        }
-      
-        legsResultsHTML += `</tbody></table>`;
-        document.getElementById('legsResults').innerHTML = legsResultsHTML;
+        $(`#a-${s.id}`, el).addEventListener('change', e => {
+          s.arrive = e.target.value;
+          if (!s.depart || (parseDate(s.depart) ?? 0) < (parseDate(s.arrive) ?? 0)) { s.depart = s.arrive; $(`#d-${s.id}`, el).value = s.depart; }
+          clearFieldError(el.querySelector('.arrive')); updateNights(); save(); markStale();
+        });
+        $(`#d-${s.id}`, el).addEventListener('change', e => { s.depart = e.target.value; clearFieldError(el.querySelector('.depart')); updateNights(); save(); markStale(); });
+        el.querySelector('.remove').addEventListener('click', () => {
+          state.stops = state.stops.filter(x => x.id !== s.id);
+          delete acs[s.id];
+          renderStops(); save(); markStale();
+        });
+      });
+      updateNights();
+    }
+
+    function updateNights() {
+      state.stops.forEach(s => {
+        const el = $(`[data-id="${s.id}"] .nights`);
+        if (!el) return;
+        const n = nightsBetween(s.arrive, s.depart);
+        el.textContent = n == null ? '' : n < 0 ? '' : n === 0 ? 'Same-day visit (no overnight stay)' : `${plural(n, 'night')} here`;
+      });
+    }
+
+    function fieldError(field, msg) {
+      field.classList.add('invalid');
+      const err = field.querySelector('.err');
+      if (err) err.textContent = msg;
+      const input = field.querySelector('input');
+      if (input) input.setAttribute('aria-invalid', 'true');
+    }
+    function clearFieldError(field) {
+      if (!field) return;
+      field.classList.remove('invalid');
+      const err = field.querySelector('.err'); if (err) err.textContent = '';
+      const input = field.querySelector('input'); if (input) input.removeAttribute('aria-invalid');
+    }
+    function showBanner(msg) { const b = $('#banner'); b.textContent = msg; b.hidden = !msg; }
+
+    function validate() {
+      $$('.field.invalid').forEach(clearFieldError);
+      showBanner('');
+      let ok = true;
+      if (!state.home.query.trim() && !state.home.place) { fieldError($('#homeField'), 'Enter your home town.'); ok = false; }
+      let prevDepart = null;
+      state.stops.forEach(s => {
+        const el = $(`[data-id="${s.id}"]`);
+        if (!s.query.trim() && !s.place) { fieldError(el.querySelector('.place'), 'Enter a destination.'); ok = false; }
+        if (parseDate(s.arrive) == null) { fieldError(el.querySelector('.arrive'), 'Choose a date.'); ok = false; }
+        if (parseDate(s.depart) == null) { fieldError(el.querySelector('.depart'), 'Choose a date.'); ok = false; }
+        else if (parseDate(s.arrive) != null && parseDate(s.depart) < parseDate(s.arrive)) { fieldError(el.querySelector('.depart'), 'Must be on or after arrival.'); ok = false; }
+        if (prevDepart != null && parseDate(s.arrive) != null && parseDate(s.arrive) < prevDepart) { fieldError(el.querySelector('.arrive'), 'Must be on or after you leave the previous stop.'); ok = false; }
+        prevDepart = parseDate(s.depart);
+      });
+      if (!ok) {
+        const first = $('.field.invalid input');
+        if (first) { first.focus({ preventScroll: true }); first.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
       }
-      
-      document.getElementById('calculateBtn').addEventListener('click', async function() {
-        const calculateBtn = document.getElementById('calculateBtn');
-        // Hide the map, results, and niat section initially
-        document.getElementById('map').style.display = "none";
-        document.getElementById('resultsSection').style.display = "none";
-        document.getElementById('niatSection').style.display = "none";
-      
-        showLoadingModal();
-        calculateBtn.disabled = true;
-      
-        try {
-          markers.forEach(marker => map.removeLayer(marker));
-          markers = [];
-          if (polyline) {
-            map.removeLayer(polyline);
-          }
-      
-          const startingLocation = document.getElementById('startingLocation').value;
-          let startingData = await geocodeAddress(startingLocation);
-          let startingCountryLocal = startingData.display_name ? extractCountry(startingData.display_name) : "Unknown";
-          let currentOrigin = startingData;
-      
-          markers.push(L.marker([currentOrigin.lat, currentOrigin.lon], {
-            title: "Start",
-            icon: L.icon({
-              iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-black.png',
-              shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-              iconSize: [25, 41],
-              iconAnchor: [12, 41],
-              popupAnchor: [1, -34]
-            })
-          }).bindPopup("Start").addTo(map));
-      
-          const journeyCoords = [currentOrigin];
-          let legsData = [];
-          const legRows = document.querySelectorAll('#legsTbody tr:not(.placeholder-row)');
-          for (let i = 0; i < legRows.length; i++) {
-            const row = legRows[i];
-            const index = row.getAttribute('data-index');
-            const destinationInput = row.querySelector('.destination-input').value;
-            const travelDuration = parseFloat(row.querySelector('.travel-duration-input').value);
-            const stayDuration = parseFloat(row.querySelector('.stay-duration-input').value) || 0;
-      
-            const destinationData = await geocodeAddress(destinationInput);
-            const legDistance = calculateDistance(currentOrigin, destinationData);
-      
-            legsData.push({
-              leg: index,
-              origin: currentOrigin,
-              destination: destinationData,
-              distance: legDistance,
-              travelDuration: travelDuration,
-              stayDuration: stayDuration
-            });
-      
-            if (i === 0) {
-              document.getElementById(`fromCountry-${index}`).innerText = startingCountryLocal;
-            } else {
-              document.getElementById(`fromCountry-${index}`).innerText = extractCountry(legsData[i-1].destination.display_name);
-            }
-      
-            markers.push(L.marker([destinationData.lat, destinationData.lon], {
-              title: `Leg ${index} Destination`,
-              icon: L.icon({
-                iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-${markerColors[i % markerColors.length]}.png`,
-                shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-                iconSize: [25, 41],
-                iconAnchor: [12, 41],
-                popupAnchor: [1, -34]
-              })
-            }).bindPopup(`Leg ${index}: ${destinationInput}`).addTo(map));
-      
-            currentOrigin = destinationData;
-            journeyCoords.push(destinationData);
-          }
-      
-          const isReturningHome = document.getElementById('returnHome').checked;
-          if (isReturningHome) {
-            const startingCoords = await geocodeAddress(startingLocation);
-            const returnDistance = calculateDistance(currentOrigin, startingCoords);
-            legsData.push({
-              leg: "Return Home",
-              origin: currentOrigin,
-              destination: startingCoords,
-              distance: returnDistance,
-              travelDuration: 0,
-              stayDuration: 0
-            });
-            journeyCoords.push(startingCoords);
-          }
-      
-          // Show the map container first so Leaflet can calculate its dimensions correctly
-          document.getElementById('map').style.display = "block";
-          map.invalidateSize();
-      
-          // Add polyline and adjust map view
-          polyline = L.polyline(journeyCoords, {color: 'black', dashArray: '4, 8'}).addTo(map);
-          map.fitBounds(polyline.getBounds(), {padding: [50, 50]});
-      
-          await generateResults(legsData, isReturningHome, startingCountryLocal);
-          document.getElementById('resultsSection').style.display = "block";
-          // Now show the niat section once eligibility calculation is complete.
-          document.getElementById('niatSection').style.display = "block";
-        } catch (error) {
-          console.error("Error during processing:", error);
-        } finally {
-          hideLoadingModal();
-          calculateBtn.disabled = false;
+      return ok;
+    }
+
+    /* ---------- Calculate ---------- */
+    function setBusy(b) {
+      const btn = $('#checkBtn');
+      btn.disabled = b;
+      btn.setAttribute('aria-busy', String(b));
+      btn.innerHTML = b ? '<span class="spinner" aria-hidden="true"></span>Checking your route…' : 'Check my journey';
+    }
+
+    /* Resolve typed text to one place. Several matches: ask the user to choose instead of taking the first. */
+    async function resolve(obj, field, resolvedEl, ac) {
+      if (obj.place) return true;
+      const q = obj.query.trim();
+      const found = await geocodeCandidates(q);
+      const lc = q.toLowerCase();
+      const exact = found.filter(c => c.label.toLowerCase() === lc || c.name.toLowerCase() === lc);
+      const p = found.length === 1 ? found[0] : exact.length === 1 ? exact[0] : null;
+      if (!p && found.length > 1) {
+        fieldError(field, `Several places match "${q}". Choose the one you mean from the list.`);
+        if (ac) ac.show(found);
+        return false;
+      }
+      if (!p) { fieldError(field, 'We couldn\u2019t find this place. Try a city name and pick it from the list.'); return false; }
+      obj.place = p; obj.query = p.label;
+      const input = field.querySelector('input'); if (input) input.value = p.label;
+      if (resolvedEl) resolvedEl.textContent = p.label;
+      return true;
+    }
+
+    async function calculate() {
+      if (!validate()) return;
+      setBusy(true);
+      try {
+        let ok = await resolve(state.home, $('#homeField'), $('#homeResolved'), homeAc);
+        for (const s of state.stops) {
+          const el = $(`[data-id="${s.id}"]`);
+          ok = (await resolve(s, el.querySelector('.place'), $(`#r-${s.id}`), acs[s.id])) && ok;
+        }
+        save();
+        if (!ok) { const f = $('.field.invalid input'); if (f) { f.focus({ preventScroll: true }); f.scrollIntoView({ behavior: 'smooth', block: 'center' }); } return; }
+
+        const home = state.home.place;
+        const pts = [home, ...state.stops.map(s => s.place)];
+        if (state.returnsHome) pts.push(home);
+        const legKm = pts.slice(1).map((p, i) => haversineKm(pts[i], p));
+        const nights = state.stops.map(s => nightsBetween(s.arrive, s.depart));
+        const evals = {};
+        MADHHABS.forEach(m => { evals[m.id] = evaluateJourney(pts, nights, state.returnsHome, m); });
+        lastResult = { pts, legKm, nights, evals, returnsHome: state.returnsHome, stops: state.stops.map(s => ({ ...s })) };
+        renderResults();
+        $('#results').hidden = false;
+        $('#staleNote').hidden = true;
+        renderMap(pts);
+        $('#results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } catch (e) {
+        console.error(e);
+        showBanner('We couldn\u2019t reach the map service. Check your connection and try again.');
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    /* ---------- Results ---------- */
+    const badge = (cls, text) => `<span class="badge ${cls}">${esc(text)}</span>`;
+
+    function legRule(m, st) {
+      if (st.traveller) {
+        const jam = m.jam === 'no' ? badge('b-mute', 'No jamʿ') : badge('b-ok', 'Jamʿ allowed');
+        return { badges: badge('b-ok', m.id === 'hanafi' ? 'Qasr (required)' : 'Qasr') + jam, why: `Journey ≈ ${fmtKm(st.km)} km (≥ ${m.minKm} km)` };
+      }
+      return {
+        badges: badge('b-no', 'Pray in full') + (st.borderline ? badge('b-warn', 'Borderline') : ''),
+        why: st.pathKm >= m.minKm ? `Never more than ≈ ${fmtKm(st.km)} km from where this journey began, but the stops add up to ≈ ${fmtKm(st.pathKm)} km: the road distance may qualify. Ask a scholar (needs ${m.minKm} km)`
+          : st.borderline ? `≈ ${fmtKm(st.km)} km in a straight line; check the road distance (needs ${m.minKm} km)` : `Journey ≈ ${fmtKm(st.km)} km, under ${m.minKm} km`
+      };
+    }
+    function stayRule(m, st, n) {
+      if (st.byLength) return { badges: badge('b-no', 'Pray in full'), why: `${plural(n, 'night')}: you count as a resident (${m.residentShort})` };
+      if (st.traveller) {
+        let jam;
+        if (m.jam === 'no') jam = badge('b-mute', 'No jamʿ');
+        else if (m.jam === 'road') jam = badge('b-mute', 'No jamʿ while staying');
+        else jam = badge('b-ok', 'Jamʿ allowed');
+        let why = n === 0 ? 'Passing through: still a traveller' : `Short stay (${plural(n, 'night')}): still a traveller`;
+        if (m.jam === 'yes' && m.id === 'hanbali') why += '. Better to pray each on time when settled';
+        if (st.stayBorderline) why = `${plural(n, 'night')}: borderline. More than 20 prayers makes you a resident, and ${plural(n, 'night')} can reach 21 depending on when you arrive and leave. Ask a scholar`;
+        return { badges: badge('b-ok', m.id === 'hanafi' ? 'Qasr (required)' : 'Qasr') + jam + (st.stayBorderline ? badge('b-warn', 'Borderline') : ''), why };
+      }
+      return { badges: badge('b-no', 'Pray in full') + (st.borderline ? badge('b-warn', 'Borderline') : ''), why: 'This part of the trip is under the distance threshold' };
+    }
+    const rulesHTML = list => `<div class="rules">${list.map(r => `<div class="rule"><span class="rule-m">${esc(r.m.name)}</span><span class="rule-badges">${r.badges}</span><span class="rule-why">${esc(r.why)}</span></div>`).join('')}</div>`;
+
+    function renderResults() {
+      const R = lastResult; if (!R) return;
+      const ms = visibleMadhhabs();
+      const names = R.pts.map(p => p.name);
+      $('#routeLine').textContent = names.join(' → ');
+      const totalKm = R.legKm.reduce((a, b) => a + b, 0);
+      const totalNights = R.nights.reduce((a, b) => a + b, 0);
+      $('#routeStats').innerHTML = [
+        plural(R.stops.length, 'stop'),
+        `≈ ${fmtKm(totalKm)} km in a straight line`,
+        plural(totalNights, 'night') + ' away',
+        R.stops.length ? `${fmtDate(R.stops[0].arrive)} – ${fmtDate(R.stops[R.stops.length - 1].depart)}` : ''
+      ].filter(Boolean).map(t => `<span class="stat">${esc(t)}</span>`).join('');
+
+      // Summary per madhhab
+      const grid = $('#summaryGrid');
+      grid.classList.toggle('single', ms.length === 1);
+      grid.innerHTML = ms.map(m => {
+        const ev = R.evals[m.id];
+        const parts = [...ev.legs, ...ev.stays];
+        const yes = parts.filter(p => p.traveller).length;
+        const status = yes === parts.length ? badge('b-ok', 'Concessions apply') : yes === 0 ? badge('b-no', 'Pray in full') : badge('b-warn', 'Partly');
+        const line = yes === 0 ? 'No part of this trip qualifies.' : `Concessions on ${yes} of ${parts.length} parts of the trip.`;
+        return `<div class="sum"><h3>${esc(m.name)} ${status}</h3><p>${esc(line)}</p><p>${esc(m.qasr)} ${esc(m.jamText)}</p></div>`;
+      }).join('');
+
+      // Timeline
+      const n = R.stops.length;
+      const items = [];
+      items.push(`<li class="tl tl-start"><span class="tl-dot" aria-hidden="true">⌂</span><div class="tl-title">Leave home · ${esc(R.pts[0].name)}</div><div class="tl-sub">Concessions begin once you leave the town's built-up area.</div></li>`);
+      R.legKm.forEach((km, i) => {
+        const to = R.pts[i + 1];
+        const isReturn = R.returnsHome && i === n;
+        items.push(`<li class="tl tl-leg"><span class="tl-dot" aria-hidden="true">${isReturn ? '↩' : '→'}</span>
+          <div class="tl-title">${isReturn ? 'Travel home to' : 'Travel to'} ${esc(to.name)}</div>
+          <div class="tl-sub">${esc(fmtKm(km))} km for this leg (straight line)</div>
+          ${rulesHTML(ms.map(m => ({ m, ...legRule(m, R.evals[m.id].legs[i]) })))}</li>`);
+        if (i < n) {
+          const s = R.stops[i], nn = R.nights[i];
+          items.push(`<li class="tl tl-stay"><span class="tl-dot" aria-hidden="true">${i + 1}</span>
+            <div class="tl-title">Stay in ${esc(to.name)}${to.country && to.country !== to.name ? `, ${esc(to.country)}` : ''}</div>
+            <div class="tl-sub">${esc(fmtDate(s.arrive))} → ${esc(fmtDate(s.depart))} · ${nn === 0 ? 'same day' : esc(plural(nn, 'night'))}</div>
+            ${rulesHTML(ms.map(m => ({ m, ...stayRule(m, R.evals[m.id].stays[i], nn) })))}</li>`);
         }
       });
-      
-      // Loading modal functions.
-      function showLoadingModal() {
-        document.getElementById('loadingModal').style.display = "block";
-        let iconElem = document.getElementById('animIcon');
-        let icons = ["✈", "🚗"];
-        let idx = 0;
-        window.loadingInterval = setInterval(function() {
-          iconElem.innerHTML = icons[idx];
-          idx = (idx + 1) % icons.length;
-        }, 500);
-      }
-      function hideLoadingModal() {
-        document.getElementById('loadingModal').style.display = "none";
-        clearInterval(window.loadingInterval);
-      }
-      
-      // Map initialization.
-      function initMap() {
-        map = L.map('map').setView([20, 0], 2);
-        L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
-          maxZoom: 19,
-          subdomains: ['a','b','c'],
-          attribution: '&copy; OpenStreetMap contributors'
+      items.push(R.returnsHome
+        ? `<li class="tl"><span class="tl-dot" aria-hidden="true">⌂</span><div class="tl-title">Back home</div><div class="tl-sub">Pray in full from the moment you arrive in your home town.</div></li>`
+        : `<li class="tl"><span class="tl-dot" aria-hidden="true">•</span><div class="tl-title">End of planned trip</div><div class="tl-sub">Add your return trip to see what applies on the way home.</div></li>`);
+      $('#timeline').innerHTML = items.join('');
+
+      renderNiat();
+    }
+
+    /* ---------- Map ---------- */
+    let map = null, layer = null;
+    function renderMap(pts) {
+      if (!window.L) { $('#mapCard').hidden = true; return; }
+      if (!map) {
+        map = L.map('map', { scrollWheelZoom: false, tap: true });
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+          subdomains: 'abcd', maxZoom: 19,
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
         }).addTo(map);
+        layer = L.layerGroup().addTo(map);
       }
-      
-      // Modal close listener.
-      document.querySelector('.close-modal').addEventListener('click', function() {
-        document.getElementById('modal').style.display = "none";
+      layer.clearLayers();
+      const color = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim() || '#0f766e';
+      const unique = lastResult.returnsHome ? pts.slice(0, -1) : pts;
+      unique.forEach((p, i) => {
+        L.marker([p.lat, p.lon], {
+          title: p.name,
+          icon: L.divIcon({ className: 'pin', html: i === 0 ? '⌂' : String(i), iconSize: [28, 28], iconAnchor: [14, 14] })
+        }).bindPopup(esc(p.label)).addTo(layer);
       });
-      
-      // Global error listener.
-      window.addEventListener('error', function(e) {
-        console.error("Global error:", e.error);
+      const line = L.polyline(pts.map(p => [p.lat, p.lon]), { color, weight: 3, dashArray: '6 8' }).addTo(layer);
+      requestAnimationFrame(() => {
+        map.invalidateSize();
+        const b = line.getBounds();
+        if (b.isValid() && !b.getNorthEast().equals(b.getSouthWest())) map.fitBounds(b, { padding: [32, 32], maxZoom: 10 });
+        else map.setView([pts[0].lat, pts[0].lon], 9);
       });
-      
-      // Populate Madhhab Summary Cards with improved formatting.
-      function populateMadhhabCards() {
-        const cardsContainer = document.getElementById('madhhabCards');
-        cardsContainer.innerHTML = ""; // Clear any existing cards
+    }
 
-        const madhhabs = [
-          {
-            name: "Hanafi",
-            guideline: `<ul>
-                          <li><strong>Qasr:</strong> Shortened (4→2 rak‘ahs) allowed for travel up to 15 days.</li>
-                          <li><strong>Combining:</strong> Not permitted; each prayer must be performed at its designated time.</li>
-                        </ul>`
-          },
-          {
-            name: "Maliki",
-            guideline: `<ul>
-                          <li><strong>Qasr:</strong> Allowed if your stay is under 4 days.</li>
-                          <li><strong>Combining:</strong> Not permitted; prayers must be kept separate.</li>
-                        </ul>`
-          },
-          {
-            name: "Shafi‘i",
-            guideline: `<ul>
-                          <li><strong>Qasr:</strong> Allowed if your stay is under 4 days.</li>
-                          <li><strong>Combining:</strong> Permitted using:
-                            <ul>
-                              <li><strong>Jamaa Takhir (delaying):</strong> Delay the earlier prayer to join the later one.</li>
-                              <li><strong>Jamaa Takdim (advancing):</strong> Advance the later prayer to the earlier time.</li>
-                            </ul>
-                          </li>
-                        </ul>`
-          },
-          {
-            name: "Hanbali",
-            guideline: `<ul>
-                          <li><strong>Qasr:</strong> Allowed if your stay is under 4 days.</li>
-                          <li><strong>Combining:</strong> Permitted using:
-                            <ul>
-                              <li><strong>Jamaa Takdim (advancing):</strong> Often preferred (e.g., perform Asr at Dhuhr time).</li>
-                              <li><strong>Jamaa Takhir (delaying):</strong> Alternatively, delay the earlier prayer.</li>
-                            </ul>
-                          </li>
-                        </ul>`
-          }
-        ];
-
-        madhhabs.forEach(madhhab => {
-          const card = document.createElement('div');
-          card.className = "madhhab-card";
-          card.innerHTML = `<div class="madhhab-header">${madhhab.name}</div>${madhhab.guideline}`;
-          card.addEventListener('click', function() {
-             const modalBody = document.getElementById('modalBody');
-             modalBody.innerHTML = `<h3>${madhhab.name} Madhhab Detailed Guideline</h3><div>${madhhab.guideline}</div>`;
-             document.getElementById('modal').style.display = "block";
-          });
-          cardsContainer.appendChild(card);
-        });
+    /* ---------- Niyyah ---------- */
+    const PR = {
+      zuhr: { gen: 'الظُّهْرِ', nom: 'الظُّهْرُ', en: 'Zuhr', four: true },
+      asr: { gen: 'الْعَصْرِ', nom: 'الْعَصْرُ', en: 'Asr', four: true },
+      maghrib: { gen: 'الْمَغْرِبِ', nom: 'الْمَغْرِبُ', en: 'Maghrib', four: false },
+      isha: { gen: 'الْعِشَاءِ', nom: 'الْعِشَاءُ', en: 'Isha', four: true }
+    };
+    function buildNiat(pair, mode, qasr) {
+      const A = pair === 'zuhr' ? PR.zuhr : PR.maghrib;
+      const B = pair === 'zuhr' ? PR.asr : PR.isha;
+      const rakAr = p => !p.four ? 'ثَلَاثَ رَكَعَاتٍ' : qasr ? 'رَكْعَتَيْنِ قَصْرًا' : 'أَرْبَعَ رَكَعَاتٍ';
+      const rakEn = p => !p.four ? 'three rakʿahs' : qasr ? 'two rakʿahs, shortened (qasr)' : 'four rakʿahs';
+      const steps = [];
+      if (mode === 'taqdim') {
+        steps.push({ when: `1 · In ${A.en} time: pray ${A.en}`,
+          ar: `أُصَلِّي فَرْضَ ${A.gen} ${rakAr(A)} مَجْمُوعًا إِلَيْهِ ${B.nom} جَمْعَ تَقْدِيمٍ لِلّٰهِ تَعَالَى`,
+          en: `I pray the obligatory ${A.en}, ${rakEn(A)}, with ${B.en} joined to it in advance (jamʿ taqdim), for the sake of Allah.` });
+        steps.push({ when: `2 · Straight after: pray ${B.en}`,
+          ar: `أُصَلِّي فَرْضَ ${B.gen} ${rakAr(B)} مَجْمُوعًا إِلَى ${A.gen} جَمْعَ تَقْدِيمٍ لِلّٰهِ تَعَالَى`,
+          en: `I pray the obligatory ${B.en}, ${rakEn(B)}, joined to ${A.en} in advance (jamʿ taqdim), for the sake of Allah.` });
+      } else {
+        steps.push({ when: `1 · Before ${A.en} time ends: make the intention to delay`,
+          ar: `نَوَيْتُ تَأْخِيرَ صَلَاةِ ${A.gen} إِلَى وَقْتِ ${B.gen} لِأَجْمَعَهَا مَعَهَا جَمْعَ تَأْخِيرٍ`,
+          en: `I intend to delay ${A.en} to the time of ${B.en}, to combine them (jamʿ taʾkhir).` });
+        steps.push({ when: `2 · In ${B.en} time: pray ${A.en}`,
+          ar: `أُصَلِّي فَرْضَ ${A.gen} ${rakAr(A)} مَجْمُوعًا مَعَ ${B.gen} جَمْعَ تَأْخِيرٍ لِلّٰهِ تَعَالَى`,
+          en: `I pray the obligatory ${A.en}, ${rakEn(A)}, combined with ${B.en} late (jamʿ taʾkhir), for the sake of Allah.` });
+        steps.push({ when: `3 · Then pray ${B.en}`,
+          ar: `أُصَلِّي فَرْضَ ${B.gen} ${rakAr(B)} مَجْمُوعًا مَعَ ${A.gen} جَمْعَ تَأْخِيرٍ لِلّٰهِ تَعَالَى`,
+          en: `I pray the obligatory ${B.en}, ${rakEn(B)}, combined with ${A.en} late (jamʿ taʾkhir), for the sake of Allah.` });
       }
-      
-      // Initialize map, travel legs table, and populate Madhhab cards on DOMContentLoaded.
-      document.addEventListener("DOMContentLoaded", function() {
-        initMap();
-        (function initLegsTable() {
-          const tbody = document.getElementById('legsTbody');
-          tbody.innerHTML = "";
-          legCount = 0;
-          const placeholder = document.createElement('tr');
-          placeholder.className = 'placeholder-row';
-          placeholder.innerHTML = `<td colspan="6">Click here to add a travel leg</td>`;
-          placeholder.addEventListener('click', addLegRow);
-          tbody.appendChild(placeholder);
-        })();
-        populateMadhhabCards();
+      const conds = mode === 'taqdim'
+        ? [`Pray ${A.en} first, then ${B.en}.`, `Intend to combine before or during ${A.en}.`, 'Leave no long gap between the two prayers (iqamah and a short pause are fine).', 'You must still be a traveller when you begin the second prayer.']
+        : [`The intention to delay must be made while ${A.en} time is still in.`, `You must still be a traveller until you finish both prayers.`, `It is sunnah to pray ${A.en} first.`];
+      if (pair === 'maghrib') conds.push('Maghrib is never shortened: always 3 rakʿahs.');
+      return { steps, conds };
+    }
+
+    const canSpeak = 'speechSynthesis' in window;
+    let voices = [];
+    if (canSpeak) { const lv = () => { voices = speechSynthesis.getVoices(); }; lv(); speechSynthesis.onvoiceschanged = lv; }
+    function speak(text, lang) {
+      if (!canSpeak || !text) return;
+      speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = lang;
+      const v = voices.find(x => x.lang && x.lang.toLowerCase().startsWith(lang.slice(0, 2)));
+      if (v) u.voice = v;
+      u.rate = lang.startsWith('ar') ? 0.85 : 1;
+      speechSynthesis.speak(u);
+    }
+
+    function renderNiat() {
+      const R = lastResult; if (!R) return;
+      const ms = visibleMadhhabs();
+      const combinable = ms.filter(m => m.jam !== 'no' && R.evals[m.id].legs.some(l => l.traveller));
+      const body = $('#niatBody'), note = $('#niatNote');
+      if (!combinable.length) {
+        body.hidden = true;
+        note.textContent = ms.length === 1 && ms[0].jam === 'no'
+          ? 'The Hanafi school does not permit combining prayers while travelling. Pray each prayer in its own time, shortened if you are a traveller.'
+          : 'Combining doesn\u2019t apply to this journey under the selected madhhab.';
+        return;
+      }
+      body.hidden = false;
+      note.textContent = combinable.some(m => m.jam === 'road')
+        ? 'Maliki: combine only while you are actually on the road, not while staying somewhere.' : '';
+      const pair = $('input[name=pair]:checked').value;
+      const mode = $('input[name=mode]:checked').value;
+      const qasr = $('#qasrChk').checked;
+      const { steps, conds } = buildNiat(pair, mode, qasr);
+      $('#niatOut').innerHTML = steps.map((s, i) => `<div class="niat-step">
+          <div class="niat-when">${esc(s.when)}</div>
+          <div class="ar" lang="ar">${esc(s.ar)}</div>
+          <div class="en">${esc(s.en)}</div>
+          ${canSpeak ? `<div class="say"><button type="button" class="btn btn-sm" data-say="${i}" data-lang="ar-SA">🔊 Arabic</button><button type="button" class="btn btn-sm" data-say="${i}" data-lang="en-US">🔊 English</button><button type="button" class="btn btn-sm" data-stop>⏹ Stop</button></div>` : ''}
+        </div>`).join('') + `<div class="label" style="margin-top:12px">Conditions</div><ul class="conds">${conds.map(c => `<li>${esc(c)}</li>`).join('')}</ul>`;
+      $('#niatOut').onclick = e => {
+        const b = e.target.closest('button'); if (!b) return;
+        if (b.hasAttribute('data-stop')) { if (canSpeak) speechSynthesis.cancel(); return; }
+        const s = steps[+b.dataset.say];
+        speak(b.dataset.lang.startsWith('ar') ? s.ar : s.en, b.dataset.lang);
+      };
+    }
+
+    /* ---------- Self-tests (open the page with #selftest) ---------- */
+    function selfTest() {
+      const M = Object.fromEntries(MADHHABS.map(m => [m.id, m]));
+      const T = [];
+      const check = (name, got, want) => T.push(`${got === want ? 'PASS' : 'FAIL'}  ${name}  (got ${got}, want ${want})`);
+      // Points on the equator, given as km east of home: line(0, 50, 10) = home, a stop 50 km east, a stop 10 km east.
+      const KM = 180 / (Math.PI * 6371.0088);
+      const line = (...kms) => kms.map(k => ({ lat: 0, lon: k * KM }));
+      let r;
+      r = evaluateJourney(line(0, 300, 0), [3], true, M.shafii);
+      check('300 km, 3 nights, return: Shafiʿi stay traveller', r.stays[0].traveller, true);
+      check('300 km, 3 nights, return: return leg traveller', r.legs[1].traveller, true);
+      r = evaluateJourney(line(0, 300, 0), [4], true, M.shafii);
+      check('4 nights = 3 full days: Shafiʿi still traveller', r.stays[0].traveller, true);
+      r = evaluateJourney(line(0, 300, 0), [5], true, M.shafii);
+      check('5 nights = 4 full days: Shafiʿi resident', r.stays[0].byLength, true);
+      check('5 nights: outbound leg still qualifies', r.legs[0].traveller, true);
+      r = evaluateJourney(line(0, 300, 0), [4], true, M.hanbali);
+      check('4 nights: Hanbali still traveller', r.stays[0].traveller, true);
+      check('4 nights: Hanbali flagged borderline', r.stays[0].stayBorderline, true);
+      check('3 nights: Hanbali not borderline', evaluateJourney(line(0, 300, 0), [3], true, M.hanbali).stays[0].stayBorderline, false);
+      r = evaluateJourney(line(0, 300, 0), [5], true, M.hanbali);
+      check('5 nights: Hanbali resident', r.stays[0].byLength, true);
+      r = evaluateJourney(line(0, 300, 0), [14], true, M.hanafi);
+      check('14 nights: Hanafi traveller', r.stays[0].traveller, true);
+      r = evaluateJourney(line(0, 300, 0), [15], true, M.hanafi);
+      check('15 nights: Hanafi resident', r.stays[0].byLength, true);
+      r = evaluateJourney(line(0, 50, 0), [1], true, M.shafii);
+      check('50 km out and back is not summed', r.legs[0].traveller, false);
+      r = evaluateJourney(line(0, 50, 100), [1, 1], false, M.shafii);
+      check('Two 50 km hops in a straight line qualify', r.legs[1].traveller, true);
+      r = evaluateJourney(line(0, 50, 10), [1, 1], false, M.shafii);
+      check('Zig-zag (50 km out, 40 km back) does not qualify', r.legs[1].traveller, false);
+      check('Zig-zag flagged: road distance may qualify', r.legs[1].borderline, true);
+      r = evaluateJourney(line(0, 300, 340, 0), [10, 1], true, M.shafii);
+      check('After a resident stay, short hop on the way home qualifies', r.legs[1].traveller, true);
+      check('Resident stay is full prayer', r.stays[0].byLength, true);
+      r = evaluateJourney(line(0, 300, 320, 0), [1, 10], true, M.shafii);
+      check('Long stay at last stop on a return trip: resident', r.stays[1].byLength, true);
+      check('Long stay at last stop: journey home qualifies', r.legs[2].traveller, true);
+      r = evaluateJourney(line(0, 60), [1], false, M.shafii);
+      check('60 km flagged borderline', r.legs[0].borderline, true);
+      r = evaluateJourney(line(0, 78), [1], false, M.hanafi);
+      check('78 km qualifies for Hanafi (77)', r.legs[0].traveller, true);
+      r = evaluateJourney(line(0, 78), [1], false, M.shafii);
+      check('78 km does not qualify for Shafiʿi (81)', r.legs[0].traveller, false);
+      r = evaluateJourney(line(0, 300, 0), [2], true, M.maliki);
+      check('Maliki short stay: no jamʿ while staying', stayRule(M.maliki, r.stays[0], 2).badges.includes('No jamʿ while staying'), true);
+      check('Bad saved madhhab falls back to all', sanitize({ madhhab: 'x" onload="', home: {}, stops: [{ arrive: '2024-01-01' }] }).madhhab, 'all');
+      check('Unsafe saved stop id is replaced', /^[a-z0-9]+$/i.test(sanitize({ home: {}, stops: [{ id: '"><img src=x>' }] }).stops[0].id), true);
+      check('Night count across months', nightsBetween('2024-01-30', '2024-02-02'), 3);
+      check('Maghrib never shortened', buildNiat('maghrib', 'taqdim', true).steps[0].ar.includes('ثَلَاثَ'), true);
+      check('Jamʿ, not jamāʿah', buildNiat('zuhr', 'takhir', true).steps.every(s => !s.ar.includes('جَمَاعَة')), true);
+      const out = $('#selftest');
+      out.hidden = false;
+      const fails = T.filter(t => t.startsWith('FAIL')).length;
+      out.textContent = `Self-test: ${T.length - fails}/${T.length} passed\n\n` + T.join('\n');
+      console.log(out.textContent);
+    }
+
+    /* ---------- Wire up ---------- */
+    function init() {
+      const homeInput = $('#homeInput');
+      homeInput.value = state.home.place ? state.home.place.label : state.home.query;
+      $('#homeResolved').textContent = state.home.place ? state.home.place.label : '';
+      homeAc = attachAutocomplete(homeInput, $('#homeList'), {
+        onType: v => { state.home.query = v; state.home.place = null; $('#homeResolved').textContent = ''; clearFieldError($('#homeField')); save(); markStale(); },
+        onPick: p => { state.home.place = p; state.home.query = p.label; $('#homeResolved').textContent = p.label; clearFieldError($('#homeField')); save(); markStale(); }
       });
-    })();
+      const mr = $(`input[name=madhhab][value="${state.madhhab}"]`) || $('input[name=madhhab][value=all]');
+      mr.checked = true;
+      $('#madhhabSeg').addEventListener('change', e => { state.madhhab = e.target.value; save(); renderResults(); });
+      $('#returnHome').checked = !!state.returnsHome;
+      $('#returnHome').addEventListener('change', e => { state.returnsHome = e.target.checked; save(); markStale(); });
+      $('#addStop').addEventListener('click', () => {
+        const prev = state.stops[state.stops.length - 1];
+        const s = newStop(prev && prev.depart);
+        state.stops.push(s); renderStops(); save(); markStale();
+        const q = $(`#q-${s.id}`); if (q) { q.focus({ preventScroll: true }); q.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+      });
+      $('#journeyForm').addEventListener('submit', e => { e.preventDefault(); calculate(); });
+      ['pair', 'mode'].forEach(n => $$(`input[name=${n}]`).forEach(i => i.addEventListener('change', renderNiat)));
+      $('#qasrChk').addEventListener('change', renderNiat);
+      renderStops();
+      if (location.hash === '#selftest') selfTest();
+    }
+    init();
+  })();
   </script>
 </body>
 </html>
