@@ -133,6 +133,7 @@
     .actions .btn { width: 100%; font-size: 1.02rem; min-height: 52px; }
     @media (min-width: 720px) { .actions { position: static; background: none; backdrop-filter: none; margin: 0 0 16px; padding: 0; } .actions .btn { width: auto; min-width: 240px; } }
     .banner { border-radius: 12px; padding: 12px 14px; background: var(--no-bg); color: var(--no); margin-bottom: 16px; font-weight: 500; }
+    .stale { margin: 8px 0 0; color: var(--warn); font-weight: 600; font-size: .9rem; }
 
     /* Results */
     .route { font-weight: 600; font-size: 1.02rem; word-break: break-word; }
@@ -255,6 +256,7 @@
 
       <div class="actions">
         <button type="submit" class="btn btn-primary" id="checkBtn">Check my journey</button>
+        <p class="stale" id="staleNote" role="status" hidden>Out of date — your trip changed. Check again to update the results.</p>
       </div>
     </form>
 
@@ -307,8 +309,8 @@
         <ul>
           <li><strong>Distance.</strong> A journey qualifies at roughly 81 km (48 Hashimi miles) for the Maliki, Shafiʿi and Hanbali schools, and about 77 km in the common Hanafi estimate. Scholars give estimates from about 77 to 89 km. This app uses straight-line distance, which is never longer than the real route. So a leg marked <em>borderline</em> may still qualify by road.</li>
           <li><strong>When it starts and ends.</strong> Concessions begin once you leave your town's built-up area and end when you arrive back home.</li>
-          <li><strong>Becoming a resident.</strong> If you intend to stay in one place long enough, you pray in full there. That means 15 days or more (Hanafi), 4 full days or more not counting the days you arrive and leave (Maliki, Shafiʿi), or more than 4 days (Hanbali). When you leave that place, a new journey begins and has to meet the distance again.</li>
-          <li><strong>Several stops.</strong> While you are still a traveller, short hops between stops stay part of the same journey, even if a single hop is short.</li>
+          <li><strong>Becoming a resident.</strong> If you intend to stay in one place long enough, you pray in full there. That means 15 nights or more (Hanafi), 4 full days or more not counting the days you arrive and leave (Maliki, Shafiʿi), or more than 4 nights (Hanbali, often counted as more than 20 prayers; exactly 4 nights is shown as borderline because it depends on when you arrive and leave). When you leave that place, a new journey begins and has to meet the distance again.</li>
+          <li><strong>Several stops.</strong> While you are still a traveller, short hops between stops stay part of the same journey. The journey is judged by the farthest point you reach from where it began (in a straight line), not by adding up the hops. If the hops add up to more than the distance, the app flags that the road distance may qualify; ask a scholar about your case.</li>
           <li><strong>Qasr</strong> shortens only the 4-rakʿah prayers (Zuhr, Asr, Isha) to 2. Fajr and Maghrib never change. If you pray behind a resident imam, pray in full with him.</li>
           <li><strong>Jamʿ (combining)</strong> joins Zuhr with Asr, or Maghrib with Isha. Hanafis don't allow it, except at ʿArafah and Muzdalifah during Hajj. Malikis allow it while you are actually on the road. Shafiʿis and Hanbalis allow it for as long as you are a traveller.</li>
           <li>This is general guidance based on the main positions of each school. For your own situation, please ask a qualified scholar.</li>
@@ -367,7 +369,7 @@
        nights = number of nights at a stop (leave date minus arrival date).
        Full days excluding the arrival and departure days = nights - 1. */
     const MADHHABS = [
-      { id: 'hanafi', name: 'Hanafi', minKm: 77, residentIf: n => n >= 15, residentShort: '15+ days',
+      { id: 'hanafi', name: 'Hanafi', minKm: 77, residentIf: n => n >= 15, residentShort: '15+ nights',
         qasr: 'Qasr is obligatory for the traveller.', jam: 'no',
         jamText: 'Combining is not permitted (except at ʿArafah and Muzdalifah in Hajj).' },
       { id: 'maliki', name: 'Maliki', minKm: 81, residentIf: n => Math.max(0, n - 1) >= 4, residentShort: '4+ full days',
@@ -376,37 +378,42 @@
       { id: 'shafii', name: 'Shafiʿi', minKm: 81, residentIf: n => Math.max(0, n - 1) >= 4, residentShort: '4+ full days',
         qasr: 'Qasr is permitted, and better on long journeys.', jam: 'yes',
         jamText: 'Combining (taqdim or taʾkhir) is permitted while you remain a traveller.' },
-      { id: 'hanbali', name: 'Hanbali', minKm: 81, residentIf: n => n > 4, residentShort: 'more than 4 days',
+      { id: 'hanbali', name: 'Hanbali', minKm: 81, residentIf: n => n > 4, borderlineStay: n => n === 4, residentShort: 'more than 4 nights',
         qasr: 'Qasr is preferred.', jam: 'yes',
         jamText: 'Combining is permitted; when settled at a stop it is better to pray each on time.' }
     ];
 
     /* Evaluate the whole trip for one madhhab.
-       legKm[i] = distance from point i to point i+1 (point 0 = home, 1..n = stops, n+1 = home if returning).
+       pts[i] = point i {lat, lon} (0 = home, 1..n = stops, n+1 = home again if returning).
        A "journey" runs from a place where you are resident (home or a long stay) to the next such place.
-       Out-and-back journeys are judged by the outbound part or the return part, never their sum. */
-    function evaluateJourney(legKm, nights, returnsHome, m) {
+       A journey is judged by the farthest straight-line point it reaches from where it began, so zig-zag
+       hops are never added up. The summed hops (pathKm) are kept only as a "road distance may qualify" hint;
+       for out-and-back journeys pathKm is the longer half, never the sum of both. */
+    function evaluateJourney(pts, nights, returnsHome, m) {
       const n = nights.length;
       const last = returnsHome ? n + 1 : n;
+      const dist = (i, j) => haversineKm(pts[i], pts[j]);
       const residentPoint = idx => idx === 0 || idx === n + 1 || m.residentIf(nights[idx - 1]);
+      const stayBorderline = k => !!(m.borderlineStay && m.borderlineStay(nights[k]));
       const legs = new Array(last), stays = new Array(n);
       let s = 0;
       while (s < last) {
         let e = s + 1;
         while (e < last && !residentPoint(e)) e++;
-        let sum = 0;
-        for (let i = s; i < e; i++) sum += legKm[i];
-        let km = sum;
+        let km = 0, sum = 0;
+        for (let j = s + 1; j <= e; j++) km = Math.max(km, dist(s, j));
+        for (let i = s; i < e; i++) sum += dist(i, i + 1);
+        let pathKm = sum;
         if (returnsHome && e === n + 1) {
-          const back = legKm[e - 1];
-          km = Math.max(sum - back, back);
+          const back = dist(e - 1, e);
+          pathKm = Math.max(sum - back, back);
         }
         const traveller = km >= m.minKm;
-        const borderline = !traveller && km >= m.minKm * 0.7;
-        for (let i = s; i < e; i++) legs[i] = { traveller, km, borderline };
+        const borderline = !traveller && (km >= m.minKm * 0.7 || pathKm >= m.minKm);
+        for (let i = s; i < e; i++) legs[i] = { traveller, km, pathKm, borderline };
         for (let k = s + 1; k <= Math.min(e, n); k++) {
-          if (k === e && m.residentIf(nights[k - 1])) stays[k - 1] = { traveller: false, byLength: true, km, borderline: false };
-          else stays[k - 1] = { traveller, byLength: false, km, borderline };
+          if (k === e && m.residentIf(nights[k - 1])) stays[k - 1] = { traveller: false, byLength: true, km, pathKm, borderline: false, stayBorderline: false };
+          else stays[k - 1] = { traveller, byLength: false, km, pathKm, borderline, stayBorderline: stayBorderline(k - 1) };
         }
         s = e;
       }
@@ -436,6 +443,14 @@
       if (!j.length) return null;
       const x = j[0], a = x.address || {};
       return { name: x.name || q, label: x.display_name, country: a.country || '', lat: +x.lat, lon: +x.lon };
+    }
+    /* All places matching typed text (Photon first; geocodeOne falls back to Nominatim). */
+    async function geocodeCandidates(q) {
+      let found = [];
+      try { found = await searchPlaces(q); } catch (e) { /* fall back */ }
+      if (!found.length) { const one = await geocodeOne(q); found = one ? [one] : []; }
+      const seen = new Set();
+      return found.filter(p => Number.isFinite(p.lat) && Number.isFinite(p.lon) && !seen.has(p.label) && seen.add(p.label));
     }
 
     function attachAutocomplete(input, list, { onType, onPick }) {
@@ -478,26 +493,66 @@
       list.addEventListener('mousedown', e => e.preventDefault());
       list.addEventListener('click', e => { const li = e.target.closest('li'); if (li) pick(+li.dataset.i); });
       input.addEventListener('blur', () => setTimeout(close, 150));
+      input.addEventListener('focus', () => { if (items.length) render(); });
+      return { show(found) { items = found; active = -1; if (document.activeElement === input) render(); } };
     }
 
     /* ---------- State ---------- */
     const KEY = 'musafir-guidance-v2';
     const newStop = prevDepart => ({ id: uid(), query: '', place: null, arrive: prevDepart || todayISO(), depart: addDays(prevDepart || todayISO(), 3) });
+    const MADHHAB_IDS = ['all', ...MADHHABS.map(m => m.id)];
+    const str = v => typeof v === 'string' ? v : '';
+    function cleanPlace(p) {
+      if (!p || typeof p !== 'object') return null;
+      const lat = Number(p.lat), lon = Number(p.lon);
+      if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) return null;
+      const name = str(p.name) || str(p.label) || 'Unknown place';
+      return { name, label: str(p.label) || name, country: str(p.country), lat, lon };
+    }
+    /* Saved data is untrusted: keep only known madhhab ids, fill missing fields, replace unsafe stop ids. */
+    function sanitize(s) {
+      if (!s || typeof s !== 'object' || !Array.isArray(s.stops)) return null;
+      const seen = new Set();
+      const stops = s.stops.filter(x => x && typeof x === 'object').map(x => {
+        let id = str(x.id);
+        if (!/^[a-z0-9]{1,16}$/i.test(id) || seen.has(id)) id = uid();
+        seen.add(id);
+        const place = cleanPlace(x.place);
+        const arrive = parseDate(x.arrive) != null ? x.arrive : todayISO();
+        const depart = parseDate(x.depart) != null ? x.depart : addDays(arrive, 3);
+        return { id, query: str(x.query) || (place ? place.label : ''), place, arrive, depart };
+      });
+      if (!stops.length) return null;
+      const h = s.home && typeof s.home === 'object' ? s.home : {};
+      const homePlace = cleanPlace(h.place);
+      return {
+        madhhab: MADHHAB_IDS.includes(s.madhhab) ? s.madhhab : 'all',
+        home: { query: str(h.query) || (homePlace ? homePlace.label : ''), place: homePlace },
+        stops,
+        returnsHome: typeof s.returnsHome === 'boolean' ? s.returnsHome : true
+      };
+    }
+    function load() {
+      try { return sanitize(JSON.parse(localStorage.getItem(KEY))); } catch (e) { return null; }
+    }
     let state = load() || { madhhab: 'all', home: { query: '', place: null }, stops: [newStop()], returnsHome: true };
     let lastResult = null;
-    function load() {
-      try {
-        const s = JSON.parse(localStorage.getItem(KEY));
-        if (s && s.home && Array.isArray(s.stops) && s.stops.length) return s;
-      } catch (e) { /* ignore */ }
-      return null;
-    }
     const save = debounce(() => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* ignore */ } }, 300);
     const visibleMadhhabs = () => state.madhhab === 'all' ? MADHHABS : MADHHABS.filter(m => m.id === state.madhhab);
+    const acs = {};
+    let homeAc = null;
+    /* Any edit to the trip makes on-screen results out of date. */
+    function markStale() {
+      if (!lastResult) return;
+      lastResult = null;
+      $('#results').hidden = true;
+      $('#staleNote').hidden = false;
+    }
 
     /* ---------- Form rendering ---------- */
-    function stopHTML(s, i) {
+    function stopHTML(stop, i) {
       const n = i + 1;
+      const s = { ...stop, id: esc(stop.id) };
       return `<article class="stop" data-id="${s.id}">
         <div class="stop-head">
           <span class="stop-num" aria-hidden="true">${n}</span>
@@ -510,7 +565,7 @@
             <input type="text" id="q-${s.id}" value="${esc(s.place ? s.place.label : s.query)}" placeholder="City or town" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="l-${s.id}" aria-describedby="r-${s.id} e-${s.id}">
             <ul id="l-${s.id}" class="ac-list" role="listbox" hidden></ul>
           </div>
-          <p class="hint resolved" id="r-${s.id}">${s.place ? esc(s.place.country || s.place.label) : ''}</p>
+          <p class="hint resolved" id="r-${s.id}">${s.place ? esc(s.place.label) : ''}</p>
           <p class="err" id="e-${s.id}"></p>
         </div>
         <div class="grid2">
@@ -527,19 +582,20 @@
       state.stops.forEach(s => {
         const el = wrap.querySelector(`[data-id="${s.id}"]`);
         const q = $(`#q-${s.id}`, el);
-        attachAutocomplete(q, $(`#l-${s.id}`, el), {
-          onType: v => { s.query = v; s.place = null; $(`#r-${s.id}`, el).textContent = ''; clearFieldError(el.querySelector('.place')); save(); },
-          onPick: p => { s.place = p; s.query = p.label; $(`#r-${s.id}`, el).textContent = p.country || p.label; clearFieldError(el.querySelector('.place')); save(); }
+        acs[s.id] = attachAutocomplete(q, $(`#l-${s.id}`, el), {
+          onType: v => { s.query = v; s.place = null; $(`#r-${s.id}`, el).textContent = ''; clearFieldError(el.querySelector('.place')); save(); markStale(); },
+          onPick: p => { s.place = p; s.query = p.label; $(`#r-${s.id}`, el).textContent = p.label; clearFieldError(el.querySelector('.place')); save(); markStale(); }
         });
         $(`#a-${s.id}`, el).addEventListener('change', e => {
           s.arrive = e.target.value;
           if (!s.depart || (parseDate(s.depart) ?? 0) < (parseDate(s.arrive) ?? 0)) { s.depart = s.arrive; $(`#d-${s.id}`, el).value = s.depart; }
-          clearFieldError(el.querySelector('.arrive')); updateNights(); save();
+          clearFieldError(el.querySelector('.arrive')); updateNights(); save(); markStale();
         });
-        $(`#d-${s.id}`, el).addEventListener('change', e => { s.depart = e.target.value; clearFieldError(el.querySelector('.depart')); updateNights(); save(); });
+        $(`#d-${s.id}`, el).addEventListener('change', e => { s.depart = e.target.value; clearFieldError(el.querySelector('.depart')); updateNights(); save(); markStale(); });
         el.querySelector('.remove').addEventListener('click', () => {
           state.stops = state.stops.filter(x => x.id !== s.id);
-          renderStops(); save();
+          delete acs[s.id];
+          renderStops(); save(); markStale();
         });
       });
       updateNights();
@@ -599,13 +655,23 @@
       btn.innerHTML = b ? '<span class="spinner" aria-hidden="true"></span>Checking your route…' : 'Check my journey';
     }
 
-    async function resolve(obj, field, resolvedEl) {
+    /* Resolve typed text to one place. Several matches: ask the user to choose instead of taking the first. */
+    async function resolve(obj, field, resolvedEl, ac) {
       if (obj.place) return true;
-      const p = await geocodeOne(obj.query.trim());
+      const q = obj.query.trim();
+      const found = await geocodeCandidates(q);
+      const lc = q.toLowerCase();
+      const exact = found.filter(c => c.label.toLowerCase() === lc || c.name.toLowerCase() === lc);
+      const p = found.length === 1 ? found[0] : exact.length === 1 ? exact[0] : null;
+      if (!p && found.length > 1) {
+        fieldError(field, `Several places match "${q}". Choose the one you mean from the list.`);
+        if (ac) ac.show(found);
+        return false;
+      }
       if (!p) { fieldError(field, 'We couldn\u2019t find this place. Try a city name and pick it from the list.'); return false; }
       obj.place = p; obj.query = p.label;
       const input = field.querySelector('input'); if (input) input.value = p.label;
-      if (resolvedEl) resolvedEl.textContent = p.country || p.label;
+      if (resolvedEl) resolvedEl.textContent = p.label;
       return true;
     }
 
@@ -613,13 +679,13 @@
       if (!validate()) return;
       setBusy(true);
       try {
-        let ok = await resolve(state.home, $('#homeField'), $('#homeResolved'));
+        let ok = await resolve(state.home, $('#homeField'), $('#homeResolved'), homeAc);
         for (const s of state.stops) {
           const el = $(`[data-id="${s.id}"]`);
-          ok = (await resolve(s, el.querySelector('.place'), $(`#r-${s.id}`))) && ok;
+          ok = (await resolve(s, el.querySelector('.place'), $(`#r-${s.id}`), acs[s.id])) && ok;
         }
         save();
-        if (!ok) { const f = $('.field.invalid input'); if (f) f.scrollIntoView({ behavior: 'smooth', block: 'center' }); return; }
+        if (!ok) { const f = $('.field.invalid input'); if (f) { f.focus({ preventScroll: true }); f.scrollIntoView({ behavior: 'smooth', block: 'center' }); } return; }
 
         const home = state.home.place;
         const pts = [home, ...state.stops.map(s => s.place)];
@@ -627,10 +693,11 @@
         const legKm = pts.slice(1).map((p, i) => haversineKm(pts[i], p));
         const nights = state.stops.map(s => nightsBetween(s.arrive, s.depart));
         const evals = {};
-        MADHHABS.forEach(m => { evals[m.id] = evaluateJourney(legKm, nights, state.returnsHome, m); });
+        MADHHABS.forEach(m => { evals[m.id] = evaluateJourney(pts, nights, state.returnsHome, m); });
         lastResult = { pts, legKm, nights, evals, returnsHome: state.returnsHome, stops: state.stops.map(s => ({ ...s })) };
         renderResults();
         $('#results').hidden = false;
+        $('#staleNote').hidden = true;
         renderMap(pts);
         $('#results').scrollIntoView({ behavior: 'smooth', block: 'start' });
       } catch (e) {
@@ -651,7 +718,8 @@
       }
       return {
         badges: badge('b-no', 'Pray in full') + (st.borderline ? badge('b-warn', 'Borderline') : ''),
-        why: st.borderline ? `≈ ${fmtKm(st.km)} km in a straight line; check the road distance (needs ${m.minKm} km)` : `Journey ≈ ${fmtKm(st.km)} km, under ${m.minKm} km`
+        why: st.pathKm >= m.minKm ? `Never more than ≈ ${fmtKm(st.km)} km from where this journey began, but the stops add up to ≈ ${fmtKm(st.pathKm)} km: the road distance may qualify. Ask a scholar (needs ${m.minKm} km)`
+          : st.borderline ? `≈ ${fmtKm(st.km)} km in a straight line; check the road distance (needs ${m.minKm} km)` : `Journey ≈ ${fmtKm(st.km)} km, under ${m.minKm} km`
       };
     }
     function stayRule(m, st, n) {
@@ -661,8 +729,10 @@
         if (m.jam === 'no') jam = badge('b-mute', 'No jamʿ');
         else if (m.jam === 'road') jam = badge('b-mute', 'No jamʿ while staying');
         else jam = badge('b-ok', 'Jamʿ allowed');
-        const why = n === 0 ? 'Passing through: still a traveller' : `Short stay (${plural(n, 'night')}): still a traveller`;
-        return { badges: badge('b-ok', m.id === 'hanafi' ? 'Qasr (required)' : 'Qasr') + jam, why: m.jam === 'yes' && m.id === 'hanbali' ? why + '. Better to pray each on time when settled' : why };
+        let why = n === 0 ? 'Passing through: still a traveller' : `Short stay (${plural(n, 'night')}): still a traveller`;
+        if (m.jam === 'yes' && m.id === 'hanbali') why += '. Better to pray each on time when settled';
+        if (st.stayBorderline) why = `${plural(n, 'night')}: borderline. More than 20 prayers makes you a resident, and ${plural(n, 'night')} can reach 21 depending on when you arrive and leave. Ask a scholar`;
+        return { badges: badge('b-ok', m.id === 'hanafi' ? 'Qasr (required)' : 'Qasr') + jam + (st.stayBorderline ? badge('b-warn', 'Borderline') : ''), why };
       }
       return { badges: badge('b-no', 'Pray in full') + (st.borderline ? badge('b-warn', 'Borderline') : ''), why: 'This part of the trip is under the distance threshold' };
     }
@@ -816,8 +886,8 @@
         return;
       }
       body.hidden = false;
-      note.textContent = combinable.some(m => m.jam === 'road') && combinable.length === 1
-        ? 'Maliki: combine only while you are actually on the road.' : '';
+      note.textContent = combinable.some(m => m.jam === 'road')
+        ? 'Maliki: combine only while you are actually on the road, not while staying somewhere.' : '';
       const pair = $('input[name=pair]:checked').value;
       const mode = $('input[name=mode]:checked').value;
       const qasr = $('#qasrChk').checked;
@@ -841,36 +911,51 @@
       const M = Object.fromEntries(MADHHABS.map(m => [m.id, m]));
       const T = [];
       const check = (name, got, want) => T.push(`${got === want ? 'PASS' : 'FAIL'}  ${name}  (got ${got}, want ${want})`);
+      // Points on the equator, given as km east of home: line(0, 50, 10) = home, a stop 50 km east, a stop 10 km east.
+      const KM = 180 / (Math.PI * 6371.0088);
+      const line = (...kms) => kms.map(k => ({ lat: 0, lon: k * KM }));
       let r;
-      r = evaluateJourney([300, 300], [3], true, M.shafii);
+      r = evaluateJourney(line(0, 300, 0), [3], true, M.shafii);
       check('300 km, 3 nights, return: Shafiʿi stay traveller', r.stays[0].traveller, true);
       check('300 km, 3 nights, return: return leg traveller', r.legs[1].traveller, true);
-      r = evaluateJourney([300, 300], [4], true, M.shafii);
+      r = evaluateJourney(line(0, 300, 0), [4], true, M.shafii);
       check('4 nights = 3 full days: Shafiʿi still traveller', r.stays[0].traveller, true);
-      r = evaluateJourney([300, 300], [5], true, M.shafii);
+      r = evaluateJourney(line(0, 300, 0), [5], true, M.shafii);
       check('5 nights = 4 full days: Shafiʿi resident', r.stays[0].byLength, true);
       check('5 nights: outbound leg still qualifies', r.legs[0].traveller, true);
-      r = evaluateJourney([300, 300], [4], true, M.hanbali);
-      check('4 nights: Hanbali traveller', r.stays[0].traveller, true);
-      r = evaluateJourney([300, 300], [5], true, M.hanbali);
+      r = evaluateJourney(line(0, 300, 0), [4], true, M.hanbali);
+      check('4 nights: Hanbali still traveller', r.stays[0].traveller, true);
+      check('4 nights: Hanbali flagged borderline', r.stays[0].stayBorderline, true);
+      check('3 nights: Hanbali not borderline', evaluateJourney(line(0, 300, 0), [3], true, M.hanbali).stays[0].stayBorderline, false);
+      r = evaluateJourney(line(0, 300, 0), [5], true, M.hanbali);
       check('5 nights: Hanbali resident', r.stays[0].byLength, true);
-      r = evaluateJourney([300, 300], [14], true, M.hanafi);
+      r = evaluateJourney(line(0, 300, 0), [14], true, M.hanafi);
       check('14 nights: Hanafi traveller', r.stays[0].traveller, true);
-      r = evaluateJourney([300, 300], [15], true, M.hanafi);
+      r = evaluateJourney(line(0, 300, 0), [15], true, M.hanafi);
       check('15 nights: Hanafi resident', r.stays[0].byLength, true);
-      r = evaluateJourney([50, 50], [1], true, M.shafii);
+      r = evaluateJourney(line(0, 50, 0), [1], true, M.shafii);
       check('50 km out and back is not summed', r.legs[0].traveller, false);
-      r = evaluateJourney([50, 50], [1, 1], false, M.shafii);
-      check('Two 50 km hops in one journey qualify', r.legs[1].traveller, true);
-      r = evaluateJourney([300, 40, 330], [10, 1], true, M.shafii);
+      r = evaluateJourney(line(0, 50, 100), [1, 1], false, M.shafii);
+      check('Two 50 km hops in a straight line qualify', r.legs[1].traveller, true);
+      r = evaluateJourney(line(0, 50, 10), [1, 1], false, M.shafii);
+      check('Zig-zag (50 km out, 40 km back) does not qualify', r.legs[1].traveller, false);
+      check('Zig-zag flagged: road distance may qualify', r.legs[1].borderline, true);
+      r = evaluateJourney(line(0, 300, 340, 0), [10, 1], true, M.shafii);
       check('After a resident stay, short hop on the way home qualifies', r.legs[1].traveller, true);
       check('Resident stay is full prayer', r.stays[0].byLength, true);
-      r = evaluateJourney([60], [1], false, M.shafii);
+      r = evaluateJourney(line(0, 300, 320, 0), [1, 10], true, M.shafii);
+      check('Long stay at last stop on a return trip: resident', r.stays[1].byLength, true);
+      check('Long stay at last stop: journey home qualifies', r.legs[2].traveller, true);
+      r = evaluateJourney(line(0, 60), [1], false, M.shafii);
       check('60 km flagged borderline', r.legs[0].borderline, true);
-      r = evaluateJourney([78], [1], false, M.hanafi);
+      r = evaluateJourney(line(0, 78), [1], false, M.hanafi);
       check('78 km qualifies for Hanafi (77)', r.legs[0].traveller, true);
-      r = evaluateJourney([78], [1], false, M.shafii);
+      r = evaluateJourney(line(0, 78), [1], false, M.shafii);
       check('78 km does not qualify for Shafiʿi (81)', r.legs[0].traveller, false);
+      r = evaluateJourney(line(0, 300, 0), [2], true, M.maliki);
+      check('Maliki short stay: no jamʿ while staying', stayRule(M.maliki, r.stays[0], 2).badges.includes('No jamʿ while staying'), true);
+      check('Bad saved madhhab falls back to all', sanitize({ madhhab: 'x" onload="', home: {}, stops: [{ arrive: '2024-01-01' }] }).madhhab, 'all');
+      check('Unsafe saved stop id is replaced', /^[a-z0-9]+$/i.test(sanitize({ home: {}, stops: [{ id: '"><img src=x>' }] }).stops[0].id), true);
       check('Night count across months', nightsBetween('2024-01-30', '2024-02-02'), 3);
       check('Maghrib never shortened', buildNiat('maghrib', 'taqdim', true).steps[0].ar.includes('ثَلَاثَ'), true);
       check('Jamʿ, not jamāʿah', buildNiat('zuhr', 'takhir', true).steps.every(s => !s.ar.includes('جَمَاعَة')), true);
@@ -885,20 +970,20 @@
     function init() {
       const homeInput = $('#homeInput');
       homeInput.value = state.home.place ? state.home.place.label : state.home.query;
-      $('#homeResolved').textContent = state.home.place ? (state.home.place.country || '') : '';
-      attachAutocomplete(homeInput, $('#homeList'), {
-        onType: v => { state.home.query = v; state.home.place = null; $('#homeResolved').textContent = ''; clearFieldError($('#homeField')); save(); },
-        onPick: p => { state.home.place = p; state.home.query = p.label; $('#homeResolved').textContent = p.country || p.label; clearFieldError($('#homeField')); save(); }
+      $('#homeResolved').textContent = state.home.place ? state.home.place.label : '';
+      homeAc = attachAutocomplete(homeInput, $('#homeList'), {
+        onType: v => { state.home.query = v; state.home.place = null; $('#homeResolved').textContent = ''; clearFieldError($('#homeField')); save(); markStale(); },
+        onPick: p => { state.home.place = p; state.home.query = p.label; $('#homeResolved').textContent = p.label; clearFieldError($('#homeField')); save(); markStale(); }
       });
       const mr = $(`input[name=madhhab][value="${state.madhhab}"]`) || $('input[name=madhhab][value=all]');
       mr.checked = true;
       $('#madhhabSeg').addEventListener('change', e => { state.madhhab = e.target.value; save(); renderResults(); });
       $('#returnHome').checked = !!state.returnsHome;
-      $('#returnHome').addEventListener('change', e => { state.returnsHome = e.target.checked; save(); });
+      $('#returnHome').addEventListener('change', e => { state.returnsHome = e.target.checked; save(); markStale(); });
       $('#addStop').addEventListener('click', () => {
         const prev = state.stops[state.stops.length - 1];
         const s = newStop(prev && prev.depart);
-        state.stops.push(s); renderStops(); save();
+        state.stops.push(s); renderStops(); save(); markStale();
         const q = $(`#q-${s.id}`); if (q) { q.focus({ preventScroll: true }); q.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
       });
       $('#journeyForm').addEventListener('submit', e => { e.preventDefault(); calculate(); });
