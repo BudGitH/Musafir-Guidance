@@ -65,6 +65,12 @@ Every threshold and ruling was checked against published sources; see [`docs/FIQ
 - Fonts (Fraunces, Amiri) load from Google Fonts; offline, the page falls back to Georgia and the system Arabic font.
 - Still to do in the script: the Hanafi `residentShort` label ("15+ nights" → "15 days or more") and the Maliki `jamText` ("or when there is a need such as illness or rain"); the "How this works" notes already carry the verified wording.
 
+### Mobile breakpoint (8 Nov)
+- Three explicit ranges: phone ≤ 599px, tablet 600–719px, desktop ≥ 720px (the base styles).
+- Phone: tighter hero and cards; madhhab selector shows "All four" on its own row then 2 × 2; arrive/leave dates stack; inputs and buttons grow to 44–48px tap targets; summaries and rule rows go single-column; map 240px; niyyah speech buttons fill the row; action bar stays sticky in portrait but scrolls with the page in landscape.
+- Tablet: two-column summary kept, padding between the phone and desktop values.
+- CSS only; no change to the JavaScript or the 28 self-tests.
+
 Implementation plan for this and the UI refresh: [`docs/IMPLEMENTATION-PLAN.md`](docs/IMPLEMENTATION-PLAN.md).
 
 ### Before release

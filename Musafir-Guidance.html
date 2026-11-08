@@ -269,6 +269,71 @@
     #results > .card:nth-child(3) { animation-delay: .12s; }
     #results > .card:nth-child(4) { animation-delay: .18s; }
 
+    /* ---------- Breakpoints ----------
+       ≤ 599px  phone   (this block)
+       600–719  tablet  (small adjustments below)
+       ≥ 720px  desktop (base styles above) */
+    @media (max-width: 599px) {
+      .wrap { padding: 12px 12px 110px; }
+      .hero { border-radius: 18px; padding: 22px 18px 24px; margin-bottom: 14px; }
+      .hero .brand { margin-bottom: 10px; }
+      .hero h1 { font-size: clamp(1.7rem, 7.5vw, 2.1rem); }
+      .hero .lede { font-size: .96rem; margin-top: 10px; }
+      .card { padding: 16px; margin-bottom: 12px; border-radius: 16px; }
+      .card h2 { font-size: 1.25rem; }
+      .card-sub { margin-bottom: 14px; }
+      /* Madhhab selector: "All four" on its own row, then 2 × 2 */
+      .seg { gap: 4px; }
+      .seg label { flex: 1 1 calc(50% - 4px); min-height: 44px; font-size: .9rem; padding: 9px 8px; }
+      #madhhabSeg label:first-child { flex-basis: 100%; }
+      /* Stops: dates stack, bigger controls */
+      .grid2 { grid-template-columns: 1fr; gap: 8px; }
+      .stop { padding: 12px; }
+      input[type=text], input[type=date], input[type=search] { min-height: 48px; }
+      .icon-btn { width: 44px; height: 44px; }
+      .btn-ghost { min-height: 48px; }
+      .toggle { padding-top: 12px; margin-top: 12px; }
+      .ac-list { max-height: 220px; }
+      .actions { margin: 0 -12px 12px; padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); }
+      /* Results */
+      .route { font-size: 1.15rem; }
+      .stats { gap: 6px; margin: 8px 0 14px; }
+      .stat { font-size: .8rem; padding: 3px 10px; }
+      .summary-grid { grid-template-columns: 1fr; }
+      .sum { padding: 14px 14px 14px 18px; }
+      .sum h3 { font-size: 1.08rem; flex-wrap: wrap; }
+      #map { height: 240px; }
+      .tl { padding: 0 0 16px 40px; }
+      .tl::before { left: 14px; top: 30px; }
+      .tl-dot { width: 30px; height: 30px; font-size: .8rem; }
+      .tl-title { font-size: .98rem; }
+      .rule { grid-template-columns: 1fr; gap: 4px; padding: 8px 10px; }
+      .rule-why { grid-column: 1; }
+      .rule-badges { gap: 4px; }
+      .badge { font-size: .74rem; padding: 3px 9px 3px 7px; }
+      /* Niyyah */
+      .niat-controls { gap: 10px; margin-bottom: 14px; }
+      .niat-step { padding: 14px 14px 14px 18px; margin-bottom: 10px; }
+      .ar { font-size: 1.3rem; line-height: 1.9; padding: 8px 12px; }
+      .say { gap: 6px; }
+      .say .btn-sm { flex: 1 1 calc(50% - 6px); min-height: 42px; }
+      .say .btn-sm[data-stop] { flex-basis: 100%; }
+      details.notes summary { font-size: 1.05rem; }
+      footer { margin-top: 16px; }
+    }
+    /* Phones held sideways: little vertical room, so the sticky bar scrolls with the page */
+    @media (max-width: 599px) and (orientation: landscape) {
+      .actions { position: static; background: none; backdrop-filter: none; }
+      .wrap { padding-bottom: 40px; }
+    }
+    /* Tablets */
+    @media (min-width: 600px) and (max-width: 719px) {
+      .wrap { padding: 24px 20px 100px; }
+      .hero { padding: 32px 30px 34px; }
+      .card { padding: 22px; }
+      .seg label { flex: 1 1 auto; }
+    }
+
     @media print {
       body { background: #fff; }
       .hero { color: #000; background: none; box-shadow: none; border: 1px solid #ccc; }
