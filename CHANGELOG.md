@@ -53,6 +53,18 @@ Every threshold and ruling was checked against published sources; see [`docs/FIQ
 - New note on undecided stays (Shafiʿi up to 18 days when departure could come any moment; Hanafi until 15 days in one place is firmly intended).
 - Thresholds, residence tests and the 28 self-tests are unchanged.
 
+### UI refresh (8 Nov)
+- Editorial header: gradient hero with a subtle pattern, eyebrow line and a display-serif title (Fraunces, falling back to Georgia).
+- Headings, route line and summary titles use the display serif; step labels are gold with a short rule.
+- Summary cards carry a status-coloured rail (green = concessions apply, amber = partly, red = pray in full).
+- Badges show a small status dot; rule rows are outlined; timeline legs use dashed markers and stays a ringed marker.
+- Niyyah steps carry a gold rail and the Arabic sits on a soft panel.
+- Results cards rise into view with a short stagger; disabled under `prefers-reduced-motion`.
+- Print stylesheet: hides the form, map and speech buttons; keeps the results and niyyah text.
+- Implemented as an override stylesheet after the base styles; no change to the fiqh logic or JavaScript, so the 28 self-tests are unaffected.
+- Fonts (Fraunces, Amiri) load from Google Fonts; offline, the page falls back to Georgia and the system Arabic font.
+- Still to do in the script: the Hanafi `residentShort` label ("15+ nights" → "15 days or more") and the Maliki `jamText` ("or when there is a need such as illness or rain"); the "How this works" notes already carry the verified wording.
+
 Implementation plan for this and the UI refresh: [`docs/IMPLEMENTATION-PLAN.md`](docs/IMPLEMENTATION-PLAN.md).
 
 ### Before release

@@ -196,16 +196,98 @@
     #selftest { white-space: pre-wrap; font: 12px/1.5 ui-monospace, monospace; }
     @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
   </style>
+  <style>
+    /* ---------- UI refresh (overrides the base styles above) ---------- */
+    @import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap");
+    :root {
+      --gold: #b48a3c; --gold-soft: #fbf3e2;
+      --radius: 20px; --radius-sm: 12px;
+      --shadow: 0 1px 2px rgba(15,23,42,.04), 0 10px 30px -12px rgba(15,23,42,.14);
+      --hero: linear-gradient(135deg, #0b5f58 0%, #0f766e 60%, #1a8a7a 100%);
+      --display: "Fraunces", "Iowan Old Style", Georgia, "Times New Roman", serif;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --gold: #d6ae62; --gold-soft: #2a2213;
+        --shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 30px -12px rgba(0,0,0,.5);
+        --hero: linear-gradient(135deg, #0c2a28 0%, #104039 60%, #145047 100%);
+      }
+    }
+
+    /* Hero header */
+    .hero { position: relative; overflow: hidden; border-radius: 24px; padding: 26px 22px 28px; margin-bottom: 20px; color: #fff; background: var(--hero); box-shadow: var(--shadow); }
+    @media (min-width: 720px) { .hero { padding: 40px 40px 42px; margin-bottom: 26px; } }
+    .hero::before { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .55;
+      background-image: radial-gradient(circle at 1px 1px, rgba(255,255,255,.18) 1px, transparent 1.6px); background-size: 22px 22px;
+      -webkit-mask-image: linear-gradient(to bottom, #000, transparent 85%); mask-image: linear-gradient(to bottom, #000, transparent 85%); }
+    .hero::after { content: ""; position: absolute; right: -60px; top: -60px; width: 220px; height: 220px; border-radius: 50%; pointer-events: none;
+      background: radial-gradient(circle, rgba(255,255,255,.22), transparent 70%); }
+    .hero > * { position: relative; }
+    .hero .brand { margin-bottom: 14px; }
+    .hero .brand-mark { background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.28); color: #fff; }
+    .eyebrow { margin: 0; font-size: .74rem; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; opacity: .85; }
+    .hero h1 { font-family: var(--display); font-weight: 500; font-size: clamp(1.9rem, 1.3rem + 2.4vw, 2.9rem); line-height: 1.08; letter-spacing: -.01em; }
+    .hero .lede { color: rgba(255,255,255,.92); margin: 12px 0 0; max-width: 58ch; font-size: 1.02rem; }
+    .hero .lede em { font-family: var(--display); font-style: italic; }
+
+    /* Cards and headings */
+    .card { padding: 20px; margin-bottom: 18px; }
+    @media (min-width: 720px) { .card { padding: 28px; } }
+    .card h2 { font-family: var(--display); font-weight: 600; font-size: 1.4rem; line-height: 1.2; }
+    .card-sub { font-size: .94rem; margin-bottom: 18px; }
+    .step-label { gap: 10px; font-size: .74rem; font-weight: 700; letter-spacing: .12em; color: var(--gold); margin-bottom: 8px; }
+    .step-label::before { content: ""; width: 18px; height: 2px; background: var(--gold); border-radius: 2px; }
+    .stop { border-radius: 16px; padding: 16px; }
+
+    /* Results */
+    .route { font-family: var(--display); font-weight: 600; font-size: 1.3rem; line-height: 1.3; }
+    .sum { position: relative; overflow: hidden; border-radius: 16px; padding: 16px 16px 16px 20px; }
+    .sum::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 5px; background: var(--muted); }
+    .sum:has(.b-ok)::before { background: var(--ok); }
+    .sum:has(.b-warn)::before { background: var(--warn); }
+    .sum:has(.b-no)::before { background: var(--no); }
+    .sum h3 { font-family: var(--display); font-weight: 600; font-size: 1.15rem; }
+    .badge { gap: 6px; font-size: .76rem; padding: 3px 10px 3px 8px; letter-spacing: .01em; }
+    .badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: .85; }
+    .tl-dot { background: var(--surface); border-style: dashed; color: var(--muted); }
+    .tl-start .tl-dot, .tl:last-child .tl-dot { border-style: solid; background: var(--surface-2); color: var(--text); }
+    .tl-stay .tl-dot { background: var(--primary); color: var(--on-primary); border: 2px solid var(--primary); box-shadow: 0 0 0 4px var(--primary-soft); }
+    .tl-title { font-size: 1.02rem; }
+    .rule { border: 1px solid var(--border); border-radius: 12px; padding: 9px 12px; }
+
+    /* Niyyah */
+    .niat-step { position: relative; overflow: hidden; border-radius: 16px; padding: 16px 16px 16px 20px; margin-bottom: 12px; }
+    .niat-step::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--gold); }
+    .niat-when { font-size: .74rem; letter-spacing: .12em; color: var(--gold); margin-bottom: 10px; }
+    .ar { font-size: clamp(1.35rem, 1.15rem + .9vw, 1.75rem); line-height: 2.1; background: var(--gold-soft); border-radius: 12px; padding: 10px 16px; }
+    details.notes summary { font-family: var(--display); font-size: 1.15rem; }
+
+    /* Results reveal (the reduced-motion rule above still wins: it is !important) */
+    @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+    #results > .card { animation: rise .45s cubic-bezier(.2,.7,.2,1) both; }
+    #results > .card:nth-child(2) { animation-delay: .06s; }
+    #results > .card:nth-child(3) { animation-delay: .12s; }
+    #results > .card:nth-child(4) { animation-delay: .18s; }
+
+    @media print {
+      body { background: #fff; }
+      .hero { color: #000; background: none; box-shadow: none; border: 1px solid #ccc; }
+      .hero::before, .hero::after { display: none; }
+      .actions, #mapCard, .say, .btn-ghost, .icon-btn, footer, #staleNote { display: none !important; }
+      .card { box-shadow: none; break-inside: avoid; }
+    }
+  </style>
 </head>
 <body>
   <main class="wrap">
-    <header>
+    <header class="hero">
       <div class="brand">
         <div class="brand-mark" aria-hidden="true">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M14.5 2.5a9.5 9.5 0 1 0 7 15.9A8 8 0 1 1 14.5 2.5Z"/></svg>
         </div>
-        <h1>Musafir Guidance</h1>
+        <p class="eyebrow">Traveller's prayer checker</p>
       </div>
+      <h1>Musafir Guidance</h1>
       <p class="lede">Plan your trip and see where you may shorten (<em>qasr</em>) and combine (<em>jamʿ</em>) prayers, according to each of the four madhhabs.</p>
     </header>
 
