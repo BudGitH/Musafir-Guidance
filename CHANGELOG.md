@@ -44,14 +44,25 @@ The current version always lives at `Musafir-Guidance.html`, so existing links a
 - Self-tests: 19 → 28 (Hanbali 4 nights, zig-zag trip, long stay at the last stop on a return trip, Maliki "no jamʿ while staying", saved-data checks).
 - v1 page marked outdated with a banner and `noindex`.
 
+### Rule verification (8 Nov)
+Every threshold and ruling was checked against published sources; see [`docs/FIQH-RULE-VERIFICATION.md`](docs/FIQH-RULE-VERIFICATION.md) for the findings and full links. Wording changes that came out of it:
+- Hanafi residence: "15 days or more" (sources say days; the app counts nights between your dates).
+- Hanafi distance note: 48 English miles ≈ 77 km is the majority view; up to ≈ 95 km with the sharʿi mile. Range shown as 77–95 km.
+- Distance is measured one way along the route, never as a round trip.
+- Maliki combining: on the road, or when there is a need such as illness or rain; not during an ordinary stay.
+- New note on undecided stays (Shafiʿi up to 18 days when departure could come any moment; Hanafi until 15 days in one place is firmly intended).
+- Thresholds, residence tests and the 28 self-tests are unchanged.
+
+Implementation plan for this and the UI refresh: [`docs/IMPLEMENTATION-PLAN.md`](docs/IMPLEMENTATION-PLAN.md).
+
 ### Before release
 - [ ] Open the page with `#selftest` and confirm all 28 rule checks pass.
 - [ ] Check layout on a real phone and a desktop.
-- [ ] Qualified review of:
-  - the Arabic niyyah wording;
-  - the Hanbali stay limit (more than 4 nights; exactly 4 nights shown as borderline, since the rule is often counted as more than 20 prayers);
-  - the Hanafi thresholds (~77 km and 15 nights);
-  - how multi-stop journeys are measured (farthest straight-line point from the start).
+- [ ] Qualified review of the open items in `docs/FIQH-RULE-VERIFICATION.md` §6:
+  - the Arabic niyyah wording (no source found yet);
+  - how multi-stop journeys are measured (farthest straight-line point from the start);
+  - whether the Maliki "20 prayers" and Shafiʿi "4 full days" counts start and end the same way.
+- [ ] Already source-confirmed, still worth a scholar's glance: Hanbali more-than-20-prayers rule with 4 nights as borderline; Hanafi ~77 km and 15 days.
 
 ### Known follow-ups
 - Selected-option highlight relies on CSS `:has()`; not visible on older browsers (e.g. Firefox < 121).
