@@ -517,12 +517,12 @@
        nights = number of nights at a stop (leave date minus arrival date).
        Full days excluding the arrival and departure days = nights - 1. */
     const MADHHABS = [
-      { id: 'hanafi', name: 'Hanafi', minKm: 77, residentIf: n => n >= 15, residentShort: '15+ nights',
+      { id: 'hanafi', name: 'Hanafi', minKm: 77, residentIf: n => n >= 15, residentShort: '15 days or more',
         qasr: 'Qasr is obligatory for the traveller.', jam: 'no',
         jamText: 'Combining is not permitted (except at ʿArafah and Muzdalifah in Hajj).' },
       { id: 'maliki', name: 'Maliki', minKm: 81, residentIf: n => Math.max(0, n - 1) >= 4, residentShort: '4+ full days',
         qasr: 'Qasr is a stressed sunnah.', jam: 'road',
-        jamText: 'Combining is permitted while actually on the road, not during a stay.' },
+        jamText: 'Combining is permitted while actually on the road, or when there is a need such as illness or rain, not during an ordinary stay.' },
       { id: 'shafii', name: 'Shafiʿi', minKm: 81, residentIf: n => Math.max(0, n - 1) >= 4, residentShort: '4+ full days',
         qasr: 'Qasr is permitted, and better on long journeys.', jam: 'yes',
         jamText: 'Combining (taqdim or taʾkhir) is permitted while you remain a traveller.' },

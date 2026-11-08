@@ -63,7 +63,7 @@ Every threshold and ruling was checked against published sources; see [`docs/FIQ
 - Print stylesheet: hides the form, map and speech buttons; keeps the results and niyyah text.
 - Implemented as an override stylesheet after the base styles; no change to the fiqh logic or JavaScript, so the 28 self-tests are unaffected.
 - Fonts (Fraunces, Amiri) load from Google Fonts; offline, the page falls back to Georgia and the system Arabic font.
-- Still to do in the script: the Hanafi `residentShort` label ("15+ nights" → "15 days or more") and the Maliki `jamText` ("or when there is a need such as illness or rain"); the "How this works" notes already carry the verified wording.
+- The Hanafi `residentShort` label ("15+ nights" → "15 days or more") and the Maliki `jamText` ("or when there is a need such as illness or rain") in the script now match the verified wording in the notes.
 
 ### Mobile breakpoint (8 Nov)
 - Three explicit ranges: phone ≤ 599px, tablet 600–719px, desktop ≥ 720px (the base styles).
